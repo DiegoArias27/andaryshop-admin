@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { ReturnRecord } from '../api/types'
 import { formatPrice } from '../utils/currency'
 import { QUICK_RANGE_LABELS, computeQuickRange, type QuickRange } from '../utils/dateRanges'
-import LoadingState from '../components/LoadingState'
+import CardListSkeleton from '../components/CardListSkeleton'
 import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
 
 const DEFAULT_WEEK = computeQuickRange('this_week')!
@@ -250,7 +250,7 @@ export default function Returns() {
         </div>
       )}
 
-      {!returns && !error && <LoadingState />}
+      {!returns && !error && <CardListSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
       {returns && returns.length === 0 && <p className="state-msg">No hay devoluciones ni cambios en este rango.</p>}
 

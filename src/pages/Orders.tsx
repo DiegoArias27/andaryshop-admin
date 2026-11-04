@@ -18,7 +18,8 @@ import { formatPrice } from '../utils/currency'
 import { QUICK_RANGE_LABELS, computeQuickRange, type QuickRange } from '../utils/dateRanges'
 import { useToast } from '../hooks/useToast'
 import { useConfirm } from '../hooks/useConfirm'
-import LoadingState from '../components/LoadingState'
+import CardListSkeleton from '../components/CardListSkeleton'
+import GiftPickerSkeleton from '../components/GiftPickerSkeleton'
 import ReturnModal from '../components/ReturnModal'
 import Modal from '../components/Modal'
 import ImageLightbox from '../components/ImageLightbox'
@@ -358,7 +359,7 @@ function GiftProductPicker({ onPick, onCancel }: { onPick: (product: Product, va
         <SearchIcon />
         <input placeholder="Buscar producto…" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
       </div>
-      {!products && <LoadingState />}
+      {!products && <GiftPickerSkeleton />}
       <div className="gift-picker__list">
         {filtered.slice(0, 30).map((p) => (
           <div key={p.id} className="gift-picker__product">
@@ -1376,7 +1377,7 @@ export default function Orders() {
         </div>
       )}
 
-      {loading && <LoadingState />}
+      {loading && <CardListSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
       {data && visibleOrders.length === 0 && <p className="state-msg">No hay ventas en este rango.</p>}
 

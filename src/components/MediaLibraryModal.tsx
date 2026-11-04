@@ -3,7 +3,17 @@ import { createPortal } from 'react-dom'
 import { api } from '../api/client'
 import type { MediaItem } from '../api/types'
 import { CloseIcon } from './icons'
-import LoadingState from './LoadingState'
+
+/** Mirrors the real image grid's tile shape while the media library loads. */
+function MediaGridSkeleton() {
+  return (
+    <div className="media-library-modal__grid" aria-hidden="true">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="skeleton media-library-skeleton__tile" />
+      ))}
+    </div>
+  )
+}
 
 /** Lets the admin reuse a photo already uploaded somewhere else instead of
  * uploading a duplicate copy — every ImageUploader shares this same catalog
@@ -35,7 +45,7 @@ export default function MediaLibraryModal({
           </button>
         </div>
         {error && <p className="form-error">{error}</p>}
-        {!items && !error && <LoadingState />}
+        {!items && !error && <MediaGridSkeleton />}
         {items && items.length === 0 && <p className="state-msg">Aún no hay imágenes subidas.</p>}
         {items && items.length > 0 && (
           <div className="media-library-modal__grid">

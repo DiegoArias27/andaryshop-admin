@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { AppSettings } from '../api/types'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import FormSkeleton from '../components/FormSkeleton'
 
 type DraftSettings = {
   labelWidthMm: string
@@ -75,7 +75,7 @@ export default function Settings() {
     return (
       <div className="page-block">
         <h1>Configuración</h1>
-        {error ? <p className="state-msg state-msg--error">{error}</p> : <LoadingState />}
+        {error ? <p className="state-msg state-msg--error">{error}</p> : <FormSkeleton />}
       </div>
     )
   }

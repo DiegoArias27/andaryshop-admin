@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { Customer } from '../api/types'
 import { formatPrice } from '../utils/currency'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import TableSkeleton from '../components/TableSkeleton'
 import { SearchIcon } from '../components/icons'
 
 function CustomerRow({ customer, onSaved }: { customer: Customer; onSaved: (c: Customer) => void }) {
@@ -178,7 +178,7 @@ export default function Customers() {
         <input placeholder="Buscar por nombre o correo…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      {loading && <LoadingState />}
+      {loading && <TableSkeleton columns={6} />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
       {!loading && customers.length === 0 && <p className="state-msg">Aún no hay clientes.</p>}
 

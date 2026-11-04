@@ -6,7 +6,7 @@ import { formatPrice } from '../utils/currency'
 import { startOfWeek, addDays, toDateStr } from '../utils/dates'
 import { useToast } from '../hooks/useToast'
 import { useConfirm } from '../hooks/useConfirm'
-import LoadingState from '../components/LoadingState'
+import CardListSkeleton from '../components/CardListSkeleton'
 import ToggleSwitch from '../components/ToggleSwitch'
 import { ArrowLeftIcon, ArrowRightIcon, CartIcon, CheckIcon, ScissorsIcon, WhatsappIcon } from '../components/icons'
 
@@ -222,7 +222,7 @@ export default function CashCuts() {
         </button>
       </div>
 
-      {loading && <LoadingState />}
+      {loading && <CardListSkeleton cardClassName="order-card cash-cut-card" />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
       {data && data.cuts.length === 0 && <p className="state-msg">No hay cortes en esta semana.</p>}
 

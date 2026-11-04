@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { Category, PackagesTile } from '../api/types'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import ListSkeleton from '../components/ListSkeleton'
 import ImageUploader from '../components/ImageUploader'
 import ImagePositionEditor from '../components/ImagePositionEditor'
 import Modal from '../components/Modal'
@@ -341,7 +341,7 @@ export default function Categories() {
         toma automáticamente una foto de algún producto de la categoría y una frase genérica.
       </p>
 
-      {loading && <LoadingState />}
+      {loading && <ListSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && (

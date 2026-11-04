@@ -24,7 +24,7 @@ import { getDiscountedPrice } from '../utils/discount'
 import { toDateStr } from '../utils/dates'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import CardListSkeleton from '../components/CardListSkeleton'
 import Modal from '../components/Modal'
 
 function formatUnit(value: number): string {
@@ -1505,7 +1505,13 @@ export default function Collections() {
     const created = await api.createCollection(data)
     setCollections((prev) => [...prev, created])
     setShowCreateForm(false)
-    toast(`Colección "${created.name}" creada con éxito`)
+    // New collections always start visible on the home page (see
+    // showOnHome's default) — which means it's auto-appended to the end of
+    // "Orden de Inicio" the moment that page is next loaded, without
+    // needing "+ Agregar". Without this hint, that looks like the opposite
+    // of what it is: "Banners" claiming everything's already added when the
+    // admin never added anything themselves.
+    toast(`Colección "${created.name}" creada con éxito — ya está al final de "Orden de Inicio" en Banners, entra ahí para acomodarla`)
   }
 
   async function handleUpdate(collection: Collection, data: CollectionInput) {
@@ -1576,7 +1582,7 @@ export default function Collections() {
         )}
       </div>
 
-      {loading && <LoadingState />}
+      {loading && <CardListSkeleton listClassName="collections-list" cardClassName="card collection-card" />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && showCreateForm && (

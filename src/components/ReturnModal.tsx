@@ -4,8 +4,19 @@ import type { Collection, Order, Product, ProductVariant, ReturnType } from '../
 import Modal from './Modal'
 import { SearchIcon } from './icons'
 import { useToast } from '../hooks/useToast'
-import LoadingState from './LoadingState'
 import { formatPrice } from '../utils/currency'
+import GiftPickerSkeleton from './GiftPickerSkeleton'
+
+/** A couple of .form-field-shaped bars for the brief gap before the real
+ * form (product/type/reason fields) renders. */
+function ReturnFormSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <div className="skeleton return-form-skeleton__field" />
+      <div className="skeleton return-form-skeleton__field" />
+    </div>
+  )
+}
 
 /** Mirrors backend/src/controllers/returns.controller.js's own
  * productQualifiesForCollection() (itself a port of the storefront's
@@ -43,7 +54,7 @@ function ReplacementPicker({ onPick, onCancel }: { onPick: (product: Product, va
         <SearchIcon />
         <input placeholder="Buscar producto…" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
       </div>
-      {!products && <LoadingState />}
+      {!products && <GiftPickerSkeleton />}
       <div className="gift-picker__list">
         {filtered.slice(0, 30).map((p) => (
           <div key={p.id} className="gift-picker__product">
@@ -177,7 +188,7 @@ export default function ReturnModal({
   return (
     <Modal title={`Devolución / Cambio — Venta #${order.id}`} onClose={onClose}>
       {!remainingByItem ? (
-        <LoadingState />
+        <ReturnFormSkeleton />
       ) : availableItems.length === 0 ? (
         <p className="state-msg">Ya no quedan unidades de esta venta sin devolver o cambiar.</p>
       ) : (

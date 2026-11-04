@@ -5,7 +5,7 @@ import Modal from '../components/Modal'
 import { formatPrice } from '../utils/currency'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import TableSkeleton from '../components/TableSkeleton'
 
 const emptyDraft = { categoryId: '', minQty: '', maxQty: '', pricePerUnit: '', isFeatured: false }
 const ALL_CATEGORIES_LABEL = 'Todas las categorías'
@@ -155,7 +155,7 @@ export default function Wholesale() {
         "{ALL_CATEGORIES_LABEL}" aplican a cualquier categoría que no tenga rangos propios.
       </p>
 
-      {loading && <LoadingState />}
+      {loading && <TableSkeleton columns={5} />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && (

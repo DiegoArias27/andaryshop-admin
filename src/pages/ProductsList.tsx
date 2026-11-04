@@ -17,7 +17,7 @@ import {
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
 import { useAppSettings } from '../hooks/useAppSettings'
-import LoadingState from '../components/LoadingState'
+import TableSkeleton from '../components/TableSkeleton'
 import ImageLightbox from '../components/ImageLightbox'
 
 function totalStockOf(p: Product): number {
@@ -339,7 +339,7 @@ export default function ProductsList() {
         </div>
       )}
 
-      {loading && <LoadingState />}
+      {loading && <TableSkeleton columns={8} />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && !error && (

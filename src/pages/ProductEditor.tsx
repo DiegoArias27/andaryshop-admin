@@ -9,7 +9,7 @@ import VariantsEditor, { type VariantsEditorHandle } from '../components/Variant
 import { getProductPriceInfo } from '../utils/discount'
 import { formatPrice } from '../utils/currency'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import FormSkeleton from '../components/FormSkeleton'
 import { BackIcon } from '../components/icons'
 
 const emptyForm = {
@@ -256,7 +256,7 @@ export default function ProductEditor() {
     }
   }
 
-  if (loading) return <LoadingState />
+  if (loading) return <FormSkeleton fields={7} />
 
   const basicFields = (
     <div className="form-grid">

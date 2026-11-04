@@ -8,7 +8,6 @@ import BannerEditor, { PROMO_DEVICE_RATIOS, seedBannerElements, imageSizeHint } 
 import { DragHandleIcon } from '../components/icons'
 import { useToast } from '../hooks/useToast'
 import { useConfirm } from '../hooks/useConfirm'
-import LoadingState from '../components/LoadingState'
 
 const PLACEMENT_LABELS: Record<Exclude<BannerPlacement, 'category'>, string> = {
   home_hero: 'Carrusel de Inicio',
@@ -108,6 +107,28 @@ const emptyPromoDraft = {
   scrimOpacity: null as number | null,
   categoryId: '',
   imageUrlMobile: null as string | null,
+}
+
+/** Mirrors the page's real shape (two "Orden de..." cards, each a list of
+ * .banner-card rows) while everything first loads. */
+function BannersPageSkeleton() {
+  return (
+    <div aria-hidden="true">
+      {Array.from({ length: 2 }).map((_, section) => (
+        <div key={section} className="card" style={{ marginTop: 24 }}>
+          <div className="skeleton banners-skeleton__title" />
+          <div className="banners-list">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="banner-card">
+                <div className="skeleton banners-skeleton__handle" />
+                <div className="skeleton banners-skeleton__line" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /** One page's ("Inicio" or "Paquetes") curated, orderable section list —
@@ -788,7 +809,7 @@ export default function Banners() {
         puedes colocar en Inicio, Paquetes o una categoría específica.
       </p>
 
-      {loading && <LoadingState />}
+      {loading && <BannersPageSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && (

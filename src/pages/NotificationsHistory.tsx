@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { AppNotification } from '../api/types'
 import NotificationRow from '../components/NotificationRow'
-import LoadingState from '../components/LoadingState'
+import ListSkeleton from '../components/ListSkeleton'
 
 const PAGE_SIZE = 20
 
@@ -65,7 +65,7 @@ export default function NotificationsHistory() {
         Historial completo de avisos de bajo stock, agotados, cortes de caja automáticos y pedidos de WhatsApp.
       </p>
 
-      {loading && <LoadingState />}
+      {loading && <ListSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
       {!loading && rows.length === 0 && <p className="state-msg">Aún no hay notificaciones.</p>}
 

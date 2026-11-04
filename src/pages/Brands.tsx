@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { Brand } from '../api/types'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
-import LoadingState from '../components/LoadingState'
+import ListSkeleton from '../components/ListSkeleton'
 
 export default function Brands() {
   const [brands, setBrands] = useState<Brand[]>([])
@@ -71,7 +71,7 @@ export default function Brands() {
     <div className="page-block">
       <h1>Marcas</h1>
 
-      {loading && <LoadingState />}
+      {loading && <ListSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && (

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { StockMovement } from '../api/types'
 import { QUICK_RANGE_LABELS, computeQuickRange, type QuickRange } from '../utils/dateRanges'
-import LoadingState from '../components/LoadingState'
+import TableSkeleton from '../components/TableSkeleton'
 import ImageLightbox from '../components/ImageLightbox'
 
 const PAGE_SIZE = 30
@@ -107,7 +107,7 @@ export default function RestockHistory() {
         </label>
       </div>
 
-      {loading && <LoadingState />}
+      {loading && <TableSkeleton columns={7} />}
       {error && <p className="state-msg state-msg--error">{error}</p>}
 
       {!loading && !error && (
