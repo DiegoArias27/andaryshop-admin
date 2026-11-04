@@ -30,6 +30,11 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* Without this, iOS Safari's elastic overscroll bounce at the top/bottom
+     of a page briefly reveals whatever is BEHIND it — body's own light
+     background, even on a page like Login whose own background is black —
+     which reads as a white flash/bar at the edges. */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -56,16 +61,20 @@ a {
   text-decoration: none;
 }
 
-button,
+button {
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+}
+
 input,
 select,
 textarea {
   font-family: var(--font-body);
-  font-size: 14px;
-}
-
-button {
-  cursor: pointer;
+  /* 16px minimum — anything smaller makes iOS Safari auto-zoom the whole
+     page when the field gets focused. Doesn't apply to buttons (no text
+     cursor, no zoom-on-focus), only real text-entry fields. */
+  font-size: 16px;
 }
 
 img {
@@ -1313,7 +1322,7 @@ img {
 
 .bulk-toolbar select,
 .bulk-toolbar__input {
-  font-size: 13px;
+  font-size: 16px;
   padding: 7px 10px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1458,6 +1467,10 @@ img {
   padding: 10px 12px;
   color: var(--black);
   font-weight: 400;
+  /* Overrides .form-field's own 13px — anything under 16px here makes iOS
+     Safari auto-zoom the whole page when the field gets focused. The label
+     text itself (the 13px) is fine, since labels are never focusable. */
+  font-size: 16px;
   /* Caps how wide a single field stretches in a form-field's flex column
      (align-items: stretch fills the parent's width by default) — keeps
      text inputs readable even when the surrounding card/section is wide,
@@ -1898,7 +1911,7 @@ img {
 .gallery-manager__item select {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  font-size: 16px;
   padding: 6px 8px;
   border-radius: 8px;
   border: 1px solid var(--gray-200);
@@ -2119,7 +2132,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 6px;
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .variant-input--size {
@@ -2381,7 +2394,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .category-list__input:focus {
@@ -2753,7 +2766,7 @@ img {
   border: none;
   outline: none;
   padding: 12px 0;
-  font-size: 15px;
+  font-size: 16px;
   min-width: 0;
 }
 
@@ -2807,7 +2820,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 12px 10px;
-  font-size: 13px;
+  font-size: 16px;
   background: var(--white);
   color: var(--black);
   flex: 0 0 160px;
@@ -2824,7 +2837,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 16px;
   background: var(--white);
   color: var(--black);
   flex: 1 1 150px;
@@ -2970,7 +2983,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .pos-restock__row input.pos-label-qty {
@@ -3184,7 +3197,7 @@ img {
   padding: 4px 6px;
   border: 1px solid var(--gray-200);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .pos-cart__gift-split-btn {
@@ -3195,7 +3208,7 @@ img {
   padding: 8px 12px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
   min-width: 240px;
 }
 
@@ -3751,7 +3764,7 @@ img {
   padding: 6px 10px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
   width: 180px;
 }
 
@@ -3845,7 +3858,7 @@ img {
   padding: 0 6px;
   border-radius: 8px;
   border: 1px solid var(--gray-200);
-  font-size: 12px;
+  font-size: 16px;
   max-width: 92px;
 }
 
@@ -3862,7 +3875,7 @@ img {
   padding: 0 4px;
   border-radius: 8px;
   border: 1px solid var(--gray-200);
-  font-size: 12px;
+  font-size: 16px;
   text-align: center;
 }
 
@@ -3988,7 +4001,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 6px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .discount-cell--editing input {
@@ -4015,7 +4028,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .wholesale-group {
@@ -4057,7 +4070,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .combo-parts__row input[type='number'] {
@@ -4065,7 +4078,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .combo-tier {
@@ -4198,7 +4211,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 16px;
   margin-bottom: 6px;
 }
 
@@ -4272,7 +4285,7 @@ img {
   height: 100%;
   padding: 0;
   border: none;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .collection-picker__filters select {
@@ -4280,7 +4293,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: 16px;
   background: var(--white);
   color: var(--black);
 }
@@ -4405,7 +4418,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: 16px;
   background: var(--white);
   color: var(--black);
 }
@@ -4415,7 +4428,7 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 8px;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: 16px;
   width: 160px;
 }
 
@@ -5558,7 +5571,7 @@ img {
   padding: 6px 10px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .cash-cut-automation__next {
@@ -5845,14 +5858,14 @@ img {
   padding: 3px 8px;
   border: 1px solid var(--gray-200);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .order-card__phone input {
   padding: 5px 10px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .order-card__packaging {
