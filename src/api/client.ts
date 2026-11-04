@@ -58,7 +58,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers })
 
-  if (res.status === 401) {
+  // A 401 with no token attached (e.g. the login request itself, with wrong
+  // credentials) is a normal rejected request, not an expired session —
+  // only treat it as "session expired" when a token WAS sent and got
+  // rejected, so a login failure shows its real message instead.
+  if (res.status === 401 && token) {
     localStorage.removeItem(TOKEN_KEY)
     if (window.location.pathname !== '/login') {
       window.location.href = '/login'

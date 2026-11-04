@@ -19,7 +19,8 @@ export default function Login() {
       await login(email, password)
       navigate('/productos')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión')
+      const message = err instanceof Error ? err.message : ''
+      setError(message === 'Invalid credentials' ? 'Correo o contraseña incorrectos' : message || 'Error al iniciar sesión')
     } finally {
       setLoading(false)
     }
