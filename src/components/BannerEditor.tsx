@@ -732,6 +732,21 @@ export default function BannerEditor({
   // guides"). null = that axis has no active guide right now.
   const [snapGuides, setSnapGuides] = useState<{ xPct: number | null; yPct: number | null }>({ xPct: null, yPct: null })
   const containerRef = useRef<HTMLDivElement>(null)
+  // DEVICE_PREVIEW_WIDTHS is a fixed target (560px on desktop) meant for a
+  // normal admin screen — on a narrow phone (the admin panel itself is used
+  // on mobile too) that overflows the screen instead of shrinking to fit.
+  // canvasAreaRef measures the actual space available around it so the
+  // preview (and its scale transform below) can shrink further when needed,
+  // instead of a fixed width that assumes there's always enough room.
+  const canvasAreaRef = useRef<HTMLDivElement>(null)
+  const [canvasAreaWidth, setCanvasAreaWidth] = useState<number | null>(null)
+  useEffect(() => {
+    const el = canvasAreaRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => setCanvasAreaWidth(entry.contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   const dragState = useRef<{ id: string; offsetXPct: number; offsetYPct: number; widthPct: number; heightPct: number } | null>(null)
   // Dragging the width handle on a text/button/badge/title/subtitle element
   // (see the "manija" rendered only on the selected element below) —
@@ -1017,6 +1032,12 @@ export default function BannerEditor({
   }
 
   const selectedLayout = selected ? resolveDeviceLayout(selected, device) : null
+  // Shrinks below DEVICE_PREVIEW_WIDTHS on a screen too narrow for it
+  // (subtracting a hair so the box never touches the viewport's edge) —
+  // null (not measured yet, e.g. the very first paint) just falls back to
+  // the normal fixed target.
+  const effectivePreviewWidth =
+    canvasAreaWidth != null ? Math.min(DEVICE_PREVIEW_WIDTHS[device], Math.max(1, canvasAreaWidth - 2)) : DEVICE_PREVIEW_WIDTHS[device]
 
   return (
     <div className="banner-editor">
@@ -1540,10 +1561,11 @@ export default function BannerEditor({
         </p>
       )}
 
+      <div ref={canvasAreaRef} className="banner-editor__canvas-area">
       <div
         className="banner-editor__canvas-wrap"
         style={{
-          width: DEVICE_PREVIEW_WIDTHS[device],
+          width: effectivePreviewWidth,
           aspectRatio: resolvedDeviceRatios[device].ratio,
           margin: '0 auto',
         }}
@@ -1562,8 +1584,11 @@ export default function BannerEditor({
             // shrunk to fit the smaller preview box above via a pure
             // repaint-time scale — see DEVICE_PREVIEW_WIDTHS for why this
             // (not a smaller CSS width) is what keeps it pixel-accurate.
+            // effectivePreviewWidth (not the fixed DEVICE_PREVIEW_WIDTHS) so
+            // this never overflows a screen narrower than the normal target
+            // (the admin panel itself is used on mobile too).
             width: BANNER_REFERENCE_WIDTHS[device],
-            transform: `scale(${DEVICE_PREVIEW_WIDTHS[device] / BANNER_REFERENCE_WIDTHS[device]})`,
+            transform: `scale(${effectivePreviewWidth / BANNER_REFERENCE_WIDTHS[device]})`,
             transformOrigin: 'top left',
           }}
           onPointerMove={handlePointerMove}
@@ -1667,6 +1692,7 @@ export default function BannerEditor({
           )
         })}
         </div>
+      </div>
       </div>
 
       <div className="banner-editor__toolbar banner-editor__toolbar--below">

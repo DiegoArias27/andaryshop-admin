@@ -3485,11 +3485,17 @@ img {
    it down to that box — the canvas itself renders at full size and is
    shrunk with a CSS transform (see below), so this wrapper is what actually
    reserves the compact on-screen footprint and rounds/frames it. */
+.banner-editor__canvas-area {
+  width: 100%;
+  min-width: 0;
+}
+
 .banner-editor__canvas-wrap {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
   box-shadow: 0 0 0 1px var(--gray-200);
+  max-width: 100%;
 }
 
 .banner-editor__canvas {
