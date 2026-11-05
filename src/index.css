@@ -3357,7 +3357,6 @@ img {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 720px;
 }
 
 .banner-card-wrap {
@@ -3375,6 +3374,11 @@ img {
   border-radius: 12px;
   padding: 14px;
   flex-wrap: wrap;
+  /* Kept compact even though .banners-list itself no longer caps width —
+     that cap moved here so the row stays a reasonable reading width while
+     .banner-editor, a sibling of this row (see banner-card-wrap in
+     Banners.tsx), is free to use the full page width when open. */
+  max-width: 720px;
 }
 
 .banner-card__img {
@@ -4436,12 +4440,12 @@ img {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--gray-100);
-  /* Just wide enough for the banner editor's own canvas (a fixed 560px, see
-     DEVICE_PREVIEW_WIDTHS in BannerEditor.tsx) to render uncropped — it
-     used to be squeezed to 520px, clipping the canvas; stretching it to the
-     full page width instead made every other field (name, pricing selects)
-     awkwardly wide, so this is a middle ground sized to the canvas, not the
-     page. */
+  /* Deliberately kept compact (unlike the standalone Banners page's own
+     editor, which now uses the full page width) — this editor shares a card
+     with other collection fields (name, pricing selects), and stretching it
+     to the full page width made those awkwardly wide too. 620px is just
+     wide enough for the banner editor's own canvas to render without being
+     clipped; it used to be squeezed to 520px, which did clip it. */
   max-width: 620px;
 }
 

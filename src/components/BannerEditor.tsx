@@ -137,9 +137,9 @@ function newElementId() {
  * monitor, a phone) instead of staying a fixed pixel size that only looks
  * right at one specific width — this is why the unit is "px" and not "pt":
  * neither is truly fixed here, "px" just names the reference width it's
- * proportional to. A realistic TARGET width per device, not how big the
- * editor's own preview BOX looks on screen — see DEVICE_PREVIEW_WIDTHS for
- * that. Must match the same table in frontend/src/components/product/Hero.tsx. */
+ * proportional to. A realistic TARGET width per device — also the preview
+ * canvas's own natural (unscaled) on-screen size, see effectivePreviewWidth
+ * below. Must match the same table in frontend/src/components/product/Hero.tsx. */
 export const BANNER_REFERENCE_WIDTHS: Record<BannerDevice, number> = {
   desktop: 1400,
   tablet: 700,
@@ -147,28 +147,6 @@ export const BANNER_REFERENCE_WIDTHS: Record<BannerDevice, number> = {
 }
 function cqw(px: number, device: BannerDevice): string {
   return `${(px / BANNER_REFERENCE_WIDTHS[device]) * 100}cqw`
-}
-
-/** How big the preview box actually appears on screen in the admin panel —
- * independent of BANNER_REFERENCE_WIDTHS. The canvas itself always renders
- * at its full BANNER_REFERENCE_WIDTHS size (laid out, hinted, and wrapped
- * exactly like the real site would be at that width) and is then visually
- * shrunk with a CSS scale() transform to fit this box (see
- * .banner-editor__canvas's inline transform below). A scale transform is a
- * pure repaint-time operation — it doesn't change the element's own layout
- * size, so container queries (cqw) and text wrapping inside it are
- * completely unaffected, unlike shrinking the canvas's actual CSS width
- * would be (which used to make text metrics drift slightly from the real
- * site at large font sizes, since fonts — especially a variable one like
- * Fraunces — don't hint/space perfectly linearly across a wide range of
- * absolute pixel sizes). Desktop's reference (1400) is intentionally
- * larger than its preview box (700) for exactly this reason; tablet/mobile
- * already sit close to their own realistic widths, so no shrinking (scale
- * 1) is needed there. */
-const DEVICE_PREVIEW_WIDTHS: Record<BannerDevice, number> = {
-  desktop: 560,
-  tablet: 560,
-  mobile: BANNER_REFERENCE_WIDTHS.mobile,
 }
 
 /** Normalizes textShadow's legacy `boolean` shape (true ≈ level 3) alongside
@@ -732,12 +710,13 @@ export default function BannerEditor({
   // guides"). null = that axis has no active guide right now.
   const [snapGuides, setSnapGuides] = useState<{ xPct: number | null; yPct: number | null }>({ xPct: null, yPct: null })
   const containerRef = useRef<HTMLDivElement>(null)
-  // DEVICE_PREVIEW_WIDTHS is a fixed target (560px on desktop) meant for a
-  // normal admin screen — on a narrow phone (the admin panel itself is used
-  // on mobile too) that overflows the screen instead of shrinking to fit.
-  // canvasAreaRef measures the actual space available around it so the
-  // preview (and its scale transform below) can shrink further when needed,
-  // instead of a fixed width that assumes there's always enough room.
+  // The preview fills whatever width its container actually gives it (up to
+  // BANNER_REFERENCE_WIDTHS, its own full natural size — see
+  // effectivePreviewWidth below) instead of a fixed on-screen target.
+  // canvasAreaRef measures that real available space, both to shrink the
+  // preview further on a screen too narrow for it (the admin panel itself is
+  // used on mobile too) and to let it grow on a wide one instead of sitting
+  // at a small fixed size regardless of how much room there is.
   const canvasAreaRef = useRef<HTMLDivElement>(null)
   const [canvasAreaWidth, setCanvasAreaWidth] = useState<number | null>(null)
   useEffect(() => {
@@ -1032,12 +1011,17 @@ export default function BannerEditor({
   }
 
   const selectedLayout = selected ? resolveDeviceLayout(selected, device) : null
-  // Shrinks below DEVICE_PREVIEW_WIDTHS on a screen too narrow for it
-  // (subtracting a hair so the box never touches the viewport's edge) —
-  // null (not measured yet, e.g. the very first paint) just falls back to
-  // the normal fixed target.
+  // Fills the real available width (so the editor uses the full page width
+  // it's given instead of sitting at a small fixed size), capped at
+  // BANNER_REFERENCE_WIDTHS since that's the canvas's own true 1:1 size —
+  // scaling any larger would just blow it up blurrily for no extra detail.
+  // Subtracts a hair so the box never touches its container's edge. null
+  // (not measured yet, e.g. the very first paint) falls back to the full
+  // reference size.
   const effectivePreviewWidth =
-    canvasAreaWidth != null ? Math.min(DEVICE_PREVIEW_WIDTHS[device], Math.max(1, canvasAreaWidth - 2)) : DEVICE_PREVIEW_WIDTHS[device]
+    canvasAreaWidth != null
+      ? Math.min(BANNER_REFERENCE_WIDTHS[device], Math.max(1, canvasAreaWidth - 2))
+      : BANNER_REFERENCE_WIDTHS[device]
 
   return (
     <div className="banner-editor">
@@ -1581,12 +1565,14 @@ export default function BannerEditor({
             aspectRatio: resolvedDeviceRatios[device].ratio,
             // Rendered at its full real-world reference width (laid out and
             // hinted exactly like the real site would be) and then visually
-            // shrunk to fit the smaller preview box above via a pure
-            // repaint-time scale — see DEVICE_PREVIEW_WIDTHS for why this
-            // (not a smaller CSS width) is what keeps it pixel-accurate.
-            // effectivePreviewWidth (not the fixed DEVICE_PREVIEW_WIDTHS) so
-            // this never overflows a screen narrower than the normal target
-            // (the admin panel itself is used on mobile too).
+            // scaled to fit effectivePreviewWidth above via a pure
+            // repaint-time transform — a smaller CSS width here would drift
+            // slightly from the real site at large font sizes instead, since
+            // fonts don't hint/space perfectly linearly across a wide range
+            // of absolute pixel sizes. The scale is 1 (no change at all)
+            // once the container is wide enough to show the canvas at its
+            // true size, and only shrinks below that on a narrower one (the
+            // admin panel itself is used on mobile too).
             width: BANNER_REFERENCE_WIDTHS[device],
             transform: `scale(${effectivePreviewWidth / BANNER_REFERENCE_WIDTHS[device]})`,
             transformOrigin: 'top left',
