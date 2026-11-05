@@ -46,6 +46,57 @@ import type {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const TOKEN_KEY = 'andary-admin-token'
 
+// The backend writes most of its validation/"not found" messages in plain
+// English (generic CRUD scaffolding shared across every resource) — this
+// maps the ones reachable from here to Spanish so what shows up in a toast
+// or form error is something the person using the admin can actually read.
+// A message not in this map (already-Spanish ones like "Stock insuficiente
+// — …" are the majority) passes through unchanged.
+const FRIENDLY_ERROR_MESSAGES: Record<string, string> = {
+  'No fields to update': 'No hay ningún cambio que guardar.',
+  'name is required': 'El nombre es obligatorio.',
+  'name and price are required': 'El nombre y el precio son obligatorios.',
+  'minQty and pricePerUnit are required': 'La cantidad mínima y el precio por unidad son obligatorios.',
+  'Tier not found': 'Ese nivel de precio ya no existe.',
+  'Category not found': 'Esa categoría ya no existe.',
+  'Product not found': 'Ese producto ya no existe.',
+  'productIds array is required': 'Selecciona al menos un producto.',
+  'images array is required': 'Selecciona al menos una imagen.',
+  'colorName is required': 'Falta el color.',
+  'Image not found': 'Esa imagen ya no existe.',
+  'imageUrl is required': 'Falta la imagen.',
+  'Banner not found': 'Ese banner ya no existe.',
+  'Collection not found': 'Esa colección ya no existe.',
+  'productId or productIds is required': 'Selecciona un producto.',
+  'orderedProductIds array is required': 'Falta el orden de los productos.',
+  'Not found in this collection': 'Ese producto ya no está en esta colección.',
+  'Email and password are required': 'El correo y la contraseña son obligatorios.',
+  'Invalid credentials': 'Correo o contraseña incorrectos.',
+  'preset is required': 'Falta la plantilla.',
+  'items is required': 'Agrega al menos un producto.',
+  'Order not found': 'Ese pedido ya no existe.',
+  'size and colorName are required': 'La talla y el color son obligatorios.',
+  'Variant not found': 'Esa variante ya no existe.',
+  'No variant found for this barcode': 'Ningún producto tiene ese código de barras.',
+  'Stock cannot go below zero': 'El stock no puede quedar en negativo.',
+  'No file uploaded (field name: "image")': 'No se pudo subir la imagen — intenta de nuevo.',
+  'Customer not found': 'Ese cliente ya no existe.',
+  'email is required': 'El correo es obligatorio.',
+  'Brand not found': 'Esa marca ya no existe.',
+  'Route not found': 'No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.',
+  'Duplicate entry': 'Ya existe un registro con esos datos.',
+  'Internal server error': 'Algo salió mal de nuestro lado. Intenta de nuevo en unos segundos.',
+  'Missing or invalid Authorization header': 'Tu sesión expiró, inicia sesión de nuevo.',
+  'Invalid or expired token': 'Tu sesión expiró, inicia sesión de nuevo.',
+}
+
+function friendlyStatusMessage(status: number): string {
+  if (status === 404) return 'No encontramos lo que buscabas.'
+  if (status === 429) return 'Demasiados intentos. Espera un momento e intenta de nuevo.'
+  if (status >= 500) return 'Algo salió mal de nuestro lado. Intenta de nuevo en unos segundos.'
+  return 'Ocurrió un error. Intenta de nuevo.'
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem(TOKEN_KEY)
   const isFormData = options.body instanceof FormData
@@ -56,7 +107,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  } catch {
+    throw new Error('No hay conexión a internet. Revisa tu conexión e intenta de nuevo.')
+  }
 
   // A 401 with no token attached (e.g. the login request itself, with wrong
   // credentials) is a normal rejected request, not an expired session —
@@ -72,11 +128,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `Error ${res.status}`)
+    const rawMessage = body.error as string | undefined
+    throw new Error((rawMessage && FRIENDLY_ERROR_MESSAGES[rawMessage]) || rawMessage || friendlyStatusMessage(res.status))
   }
 
   if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  try {
+    return (await res.json()) as T
+  } catch {
+    // A 200 with an unparseable/empty body is a backend contract violation
+    // (e.g. a query that was supposed to return a row returned none) — not
+    // something the person who just clicked "Guardar" can do anything
+    // about, so this says so instead of surfacing the raw browser message
+    // ("Unexpected end of JSON input").
+    throw new Error('El servidor respondió de forma inesperada. Intenta de nuevo — si sigue pasando, avísanos.')
+  }
 }
 
 export const api = {

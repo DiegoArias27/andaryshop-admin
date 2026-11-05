@@ -3795,6 +3795,13 @@ img {
 .banner-editor__toolbar-group {
   display: flex;
   align-items: center;
+  /* A group with many controls (fill/glass/border + its color swatches +
+     radius/spacing numbers) is wider than a phone screen on its own — since
+     .banner-editor__toolbar only wraps whole groups onto new lines, a group
+     that can't itself wrap just overflows instead (this is what the mobile
+     screenshot showed: controls clipped off the right edge). Letting it
+     wrap internally keeps every control reachable at any width. */
+  flex-wrap: wrap;
   gap: 4px;
   padding-right: 10px;
   border-right: 1px solid var(--gray-200);

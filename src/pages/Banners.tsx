@@ -281,6 +281,13 @@ export default function Banners() {
   const [bannerEditorImageZoom, setBannerEditorImageZoom] = useState<number | null>(null)
   const [bannerEditorScrimOpacity, setBannerEditorScrimOpacity] = useState<number | null>(null)
   const [bannerEditorImageUrlMobile, setBannerEditorImageUrlMobile] = useState<string | null>(null)
+  // Title/subtitle only ever had an input in the CREATE draft forms
+  // (heroDraft/promoDraft below) — once a banner existed, this inline
+  // editor had no field for them at all, so they were stuck at whatever was
+  // typed at creation. Tracked here the same way as the other editable
+  // fields above, so "Guardar banner" can actually update them too.
+  const [bannerEditorTitle, setBannerEditorTitle] = useState('')
+  const [bannerEditorSubtitle, setBannerEditorSubtitle] = useState('')
   const [savingBanner, setSavingBanner] = useState(false)
   const [bannerError, setBannerError] = useState<string | null>(null)
 
@@ -507,6 +514,8 @@ export default function Banners() {
     setBannerEditorImageZoom(b.image_zoom)
     setBannerEditorScrimOpacity(b.scrim_opacity)
     setBannerEditorImageUrlMobile(b.image_url_mobile)
+    setBannerEditorTitle(b.title ?? '')
+    setBannerEditorSubtitle(b.subtitle ?? '')
     setBannerError(null)
     setBannerEditorElements(
       b.layout_json && b.layout_json.length > 0
@@ -539,6 +548,8 @@ export default function Banners() {
         imageZoom: bannerEditorImageZoom,
         scrimOpacity: bannerEditorScrimOpacity,
         imageUrlMobile: bannerEditorImageUrlMobile,
+        title: bannerEditorTitle || null,
+        subtitle: bannerEditorSubtitle || null,
       })
       setBanners((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
       closeBannerEditorFor()
@@ -769,6 +780,28 @@ export default function Banners() {
         </div>
         {bannerEditingId === b.id && (
           <div>
+            <div className="form-grid" style={{ marginBottom: 12 }}>
+              <label className="form-field">
+                Título
+                <input
+                  value={bannerEditorTitle}
+                  onChange={(e) => setBannerEditorTitle(e.target.value)}
+                  placeholder="Ej. Urban Elegance"
+                />
+              </label>
+              <label className="form-field">
+                Subtítulo
+                <input
+                  value={bannerEditorSubtitle}
+                  onChange={(e) => setBannerEditorSubtitle(e.target.value)}
+                  placeholder="Descripción breve"
+                />
+              </label>
+            </div>
+            <p className="page-block__hint" style={{ marginTop: -6 }}>
+              Esto es lo que identifica al banner aquí en la lista — si el banner tiene un diseño personalizado abajo,
+              edita el texto que se ve en la foto haciendo doble clic sobre él directamente.
+            </p>
             <BannerEditor
               imageUrl={bannerEditorImageUrl}
               elements={bannerEditorElements}

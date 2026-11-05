@@ -19,8 +19,9 @@ export default function Login() {
       await login(email, password)
       navigate('/productos')
     } catch (err) {
-      const message = err instanceof Error ? err.message : ''
-      setError(message === 'Invalid credentials' ? 'Correo o contraseña incorrectos' : message || 'Error al iniciar sesión')
+      // client.ts's request() already translates the raw "Invalid
+      // credentials" the backend sends into Spanish.
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión')
     } finally {
       setLoading(false)
     }
