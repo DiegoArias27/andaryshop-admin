@@ -12,6 +12,16 @@
  * Call once, at app startup. */
 export function installTouchDragPolyfill() {
   let dragEl: Element | null = null
+  // Where the last dispatched dragover was, so touchmove's own jitter (a
+  // "still" finger on a touchscreen fires many events a pixel or two apart,
+  // nothing like a mouse's naturally coarser movement) doesn't spam
+  // dragover at a reorder boundary and make the list swap back and forth —
+  // seen as the "Guardar" banner flickering in and out as pageOrderChanged
+  // flipped with it. A real drag easily clears this in normal use; it only
+  // filters out noise.
+  let lastX = 0
+  let lastY = 0
+  const MOVE_THRESHOLD_PX = 10
 
   function findDraggable(target: EventTarget | null): Element | null {
     if (!(target instanceof Element)) return null
@@ -35,7 +45,10 @@ export function installTouchDragPolyfill() {
       const el = findDraggable(e.target)
       if (!el) return
       dragEl = el
-      dispatch('dragstart', el, e.touches[0])
+      const touch = e.touches[0]
+      lastX = touch.clientX
+      lastY = touch.clientY
+      dispatch('dragstart', el, touch)
     },
     { passive: true }
   )
@@ -45,13 +58,18 @@ export function installTouchDragPolyfill() {
     (e) => {
       if (!dragEl) return
       const touch = e.touches[0]
-      const over = document.elementFromPoint(touch.clientX, touch.clientY)
-      if (over) dispatch('dragover', over, touch)
       // Dragging a handle is the one gesture that should override the
       // page's own scroll — see also touch-action: none on
       // [draggable="true"] in index.css, belt-and-suspenders for whichever
-      // of the two a given browser actually honors first.
+      // of the two a given browser actually honors first. Always
+      // preventDefault, even below the move threshold — only the dragover
+      // dispatch itself is throttled.
       e.preventDefault()
+      if (Math.hypot(touch.clientX - lastX, touch.clientY - lastY) < MOVE_THRESHOLD_PX) return
+      lastX = touch.clientX
+      lastY = touch.clientY
+      const over = document.elementFromPoint(touch.clientX, touch.clientY)
+      if (over) dispatch('dragover', over, touch)
     },
     { passive: false }
   )
