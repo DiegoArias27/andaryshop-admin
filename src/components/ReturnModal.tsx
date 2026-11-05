@@ -6,6 +6,7 @@ import { SearchIcon } from './icons'
 import { useToast } from '../hooks/useToast'
 import { formatPrice } from '../utils/currency'
 import GiftPickerSkeleton from './GiftPickerSkeleton'
+import NumberField from './NumberField'
 
 /** A couple of .form-field-shaped bars for the brief gap before the real
  * form (product/type/reason fields) renders. */
@@ -226,12 +227,12 @@ export default function ReturnModal({
             </label>
             <label className="form-field">
               Cantidad
-              <input
-                type="number"
+              <NumberField
+                key={orderItemId}
                 min={1}
                 max={remaining}
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(remaining, Number(e.target.value) || 1)))}
+                onValueChange={(n) => setQuantity(Math.max(1, Math.min(remaining, n)))}
               />
             </label>
           </div>

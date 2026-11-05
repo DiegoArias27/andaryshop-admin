@@ -152,7 +152,7 @@ function PartRow({
       )}
       {showQty && (
         <input
-          type="number"
+          type="number" inputMode="numeric"
           min="1"
           value={part.requiredQty}
           onChange={(e) => onUpdate({ requiredQty: e.target.value })}
@@ -161,7 +161,7 @@ function PartRow({
       )}
       {showPrice && (
         <input
-          type="number"
+          type="number" inputMode="decimal"
           step="0.01"
           min="0"
           value={part.price}
@@ -594,7 +594,7 @@ function CollectionForm({
           <label className="form-field">
             Precio por unidad (MXN)
             <input
-              type="number"
+              type="number" inputMode="decimal"
               step="0.01"
               min="0"
               value={draft.unitPrice}
@@ -605,7 +605,7 @@ function CollectionForm({
           <label className="form-field">
             Cantidad mínima (opcional)
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.unitMinQty}
               onChange={(e) => setDraft((d) => ({ ...d, unitMinQty: e.target.value }))}
@@ -620,7 +620,7 @@ function CollectionForm({
           <label className="form-field">
             Unidades del paquete
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.bundleQty}
               onChange={(e) => setDraft((d) => ({ ...d, bundleQty: e.target.value }))}
@@ -630,7 +630,7 @@ function CollectionForm({
           <label className="form-field">
             Precio del paquete (MXN)
             <input
-              type="number"
+              type="number" inputMode="decimal"
               step="0.01"
               min="0"
               value={draft.bundlePrice}
@@ -701,7 +701,7 @@ function CollectionForm({
                 <label className="form-field combo-tier__price">
                   Precio total (MXN)
                   <input
-                    type="number"
+                    type="number" inputMode="decimal"
                     step="0.01"
                     min="0"
                     value={tier.price}
@@ -1006,7 +1006,7 @@ function ProductPicker({
           </select>
           {discountType && (
             <input
-              type="number"
+              type="number" inputMode="decimal"
               step="0.01"
               min="0"
               value={discountValue}
@@ -1121,7 +1121,7 @@ function DiscountCell({
       </select>
       {type && (
         <input
-          type="number"
+          type="number" inputMode="decimal"
           step="0.01"
           min="0"
           value={value}

@@ -212,7 +212,7 @@ export default function Wholesale() {
               ))}
             </select>
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               placeholder="Cantidad mínima"
               value={draft.minQty}
@@ -220,14 +220,14 @@ export default function Wholesale() {
               required
             />
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               placeholder="Cantidad máxima (opcional)"
               value={draft.maxQty}
               onChange={(e) => setDraft((d) => ({ ...d, maxQty: e.target.value }))}
             />
             <input
-              type="number"
+              type="number" inputMode="decimal"
               step="0.01"
               min="0"
               placeholder="Precio por unidad"
@@ -267,7 +267,7 @@ export default function Wholesale() {
             <label className="form-field">
               Cantidad mínima
               <input
-                type="number"
+                type="number" inputMode="numeric"
                 min="1"
                 value={editDraft.minQty}
                 onChange={(e) => setEditDraft((d) => ({ ...d, minQty: e.target.value }))}
@@ -276,7 +276,7 @@ export default function Wholesale() {
             <label className="form-field">
               Cantidad máxima (opcional)
               <input
-                type="number"
+                type="number" inputMode="numeric"
                 min="1"
                 placeholder="Sin límite"
                 value={editDraft.maxQty}
@@ -287,7 +287,7 @@ export default function Wholesale() {
           <label className="form-field">
             Precio por unidad
             <input
-              type="number"
+              type="number" inputMode="decimal"
               step="0.01"
               min="0"
               value={editDraft.pricePerUnit}

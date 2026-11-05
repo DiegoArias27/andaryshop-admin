@@ -4,6 +4,7 @@ import { resolveDeviceLayout } from '../api/types'
 import { api } from '../api/client'
 import ImageCropModal from './ImageCropModal'
 import ImageUploader from './ImageUploader'
+import NumberField from './NumberField'
 import {
   AlignCenterIcon,
   AlignLeftIcon,
@@ -1278,12 +1279,12 @@ export default function BannerEditor({
             <div className="banner-editor__toolbar-group">
               <label className="banner-editor__toolbar-num" title="Tamaño de la tarjeta">
                 <TextSizeIcon width={16} height={16} />
-                <input
-                  type="number"
-                  min="16"
-                  max="96"
+                <NumberField
+                  key={`${selected.id}-${device}`}
+                  min={16}
+                  max={96}
                   value={selectedLayout.fontSize}
-                  onChange={(e) => updateDeviceLayout(selected.id, { fontSize: Number(e.target.value) || selectedLayout.fontSize })}
+                  onValueChange={(n) => updateDeviceLayout(selected.id, { fontSize: n })}
                 />
               </label>
             </div>
@@ -1292,44 +1293,42 @@ export default function BannerEditor({
               <div className="banner-editor__toolbar-group">
                 <label className="banner-editor__toolbar-num" title="Ancho">
                   <span style={{ fontSize: 11, fontWeight: 600 }}>An.</span>
-                  <input
-                    type="number"
-                    min="20"
-                    max="1400"
+                  <NumberField
+                    key={`${selected.id}-${device}`}
+                    min={20}
+                    max={1400}
                     value={selectedLayout.width ?? 220}
-                    onChange={(e) => updateDeviceLayout(selected.id, { width: Number(e.target.value) || selectedLayout.width })}
+                    onValueChange={(n) => updateDeviceLayout(selected.id, { width: n })}
                   />
                 </label>
                 <label className="banner-editor__toolbar-num" title="Alto">
                   <span style={{ fontSize: 11, fontWeight: 600 }}>Al.</span>
-                  <input
-                    type="number"
-                    min="20"
-                    max="1400"
+                  <NumberField
+                    key={`${selected.id}-${device}`}
+                    min={20}
+                    max={1400}
                     value={selectedLayout.height ?? 270}
-                    onChange={(e) => updateDeviceLayout(selected.id, { height: Number(e.target.value) || selectedLayout.height })}
+                    onValueChange={(n) => updateDeviceLayout(selected.id, { height: n })}
                   />
                 </label>
                 <label className="banner-editor__toolbar-num" title="Redondeado (0 = cuadrado, alto = píldora)">
                   <span style={{ fontSize: 11, fontWeight: 600 }}>Radio</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="999"
+                  <NumberField
+                    key={`${selected.id}-${device}`}
+                    min={0}
+                    max={999}
                     value={selectedLayout.borderRadius ?? 0}
-                    onChange={(e) => updateDeviceLayout(selected.id, { borderRadius: Number(e.target.value) || 0 })}
+                    onValueChange={(n) => updateDeviceLayout(selected.id, { borderRadius: n })}
                   />
                 </label>
                 <label className="banner-editor__toolbar-num" title="Nivel de sombra (0 = sin sombra, 5 = máxima)">
                   <span style={{ fontSize: 11, fontWeight: 600 }}>Sombra</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="5"
+                  <NumberField
+                    key={selected.id}
+                    min={0}
+                    max={5}
                     value={shadowLevel(selected.textShadow)}
-                    onChange={(e) =>
-                      updateElement(selected.id, { textShadow: Math.max(0, Math.min(5, Number(e.target.value) || 0)) })
-                    }
+                    onValueChange={(n) => updateElement(selected.id, { textShadow: Math.max(0, Math.min(5, n)) })}
                   />
                 </label>
               </div>
@@ -1352,12 +1351,12 @@ export default function BannerEditor({
                       title="Color del borde"
                     />
                     <label className="banner-editor__toolbar-num" title="Grosor del borde">
-                      <input
-                        type="number"
-                        min="1"
-                        max="12"
+                      <NumberField
+                        key={`${selected.id}-${device}`}
+                        min={1}
+                        max={12}
                         value={selectedLayout.borderWidth ?? 2}
-                        onChange={(e) => updateDeviceLayout(selected.id, { borderWidth: Number(e.target.value) || 1 })}
+                        onValueChange={(n) => updateDeviceLayout(selected.id, { borderWidth: n })}
                       />
                     </label>
                   </>
@@ -1385,12 +1384,12 @@ export default function BannerEditor({
             </select>
             <label className="banner-editor__toolbar-num" title="Tamaño de texto">
               <TextSizeIcon width={16} height={16} />
-              <input
-                type="number"
-                min="8"
-                max="96"
+              <NumberField
+                key={`${selected.id}-${device}`}
+                min={8}
+                max={96}
                 value={selectedLayout.fontSize}
-                onChange={(e) => updateDeviceLayout(selected.id, { fontSize: Number(e.target.value) || selectedLayout.fontSize })}
+                onValueChange={(n) => updateDeviceLayout(selected.id, { fontSize: n })}
               />
             </label>
             <button
@@ -1407,14 +1406,12 @@ export default function BannerEditor({
             </label>
             <label className="banner-editor__toolbar-num" title="Nivel de sombra de texto (0 = sin sombra, 5 = máxima)">
               <span style={{ fontSize: 11, fontWeight: 600 }}>Sombra</span>
-              <input
-                type="number"
-                min="0"
-                max="5"
+              <NumberField
+                key={selected.id}
+                min={0}
+                max={5}
                 value={shadowLevel(selected.textShadow)}
-                onChange={(e) =>
-                  updateElement(selected.id, { textShadow: Math.max(0, Math.min(5, Number(e.target.value) || 0)) })
-                }
+                onValueChange={(n) => updateElement(selected.id, { textShadow: Math.max(0, Math.min(5, n)) })}
               />
             </label>
           </div>
@@ -1486,34 +1483,34 @@ export default function BannerEditor({
                   title="Color del borde"
                 />
                 <label className="banner-editor__toolbar-num" title="Grosor del borde">
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
+                  <NumberField
+                    key={`${selected.id}-${device}`}
+                    min={1}
+                    max={12}
                     value={selectedLayout.borderWidth ?? 2}
-                    onChange={(e) => updateDeviceLayout(selected.id, { borderWidth: Number(e.target.value) || 1 })}
+                    onValueChange={(n) => updateDeviceLayout(selected.id, { borderWidth: n })}
                   />
                 </label>
               </>
             )}
             <label className="banner-editor__toolbar-num" title="Redondeado (0 = cuadrado, alto = píldora)">
               <span style={{ fontSize: 11, fontWeight: 600 }}>Radio</span>
-              <input
-                type="number"
-                min="0"
-                max="999"
+              <NumberField
+                key={`${selected.id}-${device}`}
+                min={0}
+                max={999}
                 value={selectedLayout.borderRadius ?? 0}
-                onChange={(e) => updateDeviceLayout(selected.id, { borderRadius: Number(e.target.value) || 0 })}
+                onValueChange={(n) => updateDeviceLayout(selected.id, { borderRadius: n })}
               />
             </label>
             <label className="banner-editor__toolbar-num" title="Espaciado interno — el aire entre el texto y su fondo/borde">
               <span style={{ fontSize: 11, fontWeight: 600 }}>Espacio</span>
-              <input
-                type="number"
-                min="0"
-                max="60"
+              <NumberField
+                key={`${selected.id}-${device}`}
+                min={0}
+                max={60}
                 value={selectedLayout.padding ?? 0}
-                onChange={(e) => updateDeviceLayout(selected.id, { padding: Number(e.target.value) || 0 })}
+                onValueChange={(n) => updateDeviceLayout(selected.id, { padding: n })}
               />
             </label>
           </div>

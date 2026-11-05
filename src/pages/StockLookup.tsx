@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import ImageLightbox from '../components/ImageLightbox'
+import NumberField from '../components/NumberField'
 import { api } from '../api/client'
 import type { Collection, Customer, PaymentMethod, Product, ProductVariant, VariantByBarcode, WholesaleTier } from '../api/types'
 import type { SaleLine } from '../context/pos-session-context'
@@ -1134,7 +1135,7 @@ export default function StockLookup() {
                     <span className="stock-result__actions-label">Reabastecer</span>
                     <div className="pos-restock__row">
                       <input
-                        type="number"
+                        type="number" inputMode="numeric"
                         min="0"
                         placeholder="Cantidad recibida"
                         value={surtirQty}
@@ -1146,7 +1147,7 @@ export default function StockLookup() {
                     </div>
                     <div className="pos-restock__row">
                       <input
-                        type="number"
+                        type="number" inputMode="numeric"
                         min="1"
                         className="pos-label-qty"
                         title="Cuántas etiquetas imprimir"
@@ -1238,7 +1239,7 @@ export default function StockLookup() {
                   <label className="pos-cart__item-field">
                     <span>Precio</span>
                     <input
-                      type="number"
+                      type="number" inputMode="decimal"
                       min="0"
                       step="0.01"
                       className="pos-cart__item-price"
@@ -1251,7 +1252,7 @@ export default function StockLookup() {
                   <label className="pos-cart__item-field">
                     <span>Desc. x unidad</span>
                     <input
-                      type="number"
+                      type="number" inputMode="decimal"
                       min="0"
                       step="0.01"
                       className="pos-cart__item-price"
@@ -1276,7 +1277,7 @@ export default function StockLookup() {
                         }}
                       >
                         <input
-                          type="number"
+                          type="number" inputMode="numeric"
                           min="1"
                           max={line.quantity - 1}
                           autoFocus
@@ -1429,13 +1430,14 @@ export default function StockLookup() {
 
               <label className="pos-cart__total">
                 <span>Total a pagar{totalOverride != null ? ' (editado a mano)' : ''}</span>
-                <input
-                  type="number"
-                  min="0"
+                <NumberField
+                  key={computedTotal}
+                  min={0}
                   step="0.01"
+                  inputMode="decimal"
                   className="pos-cart__total-input"
                   value={Math.round(saleTotal * 100) / 100}
-                  onChange={(e) => setTotalOverride(Math.max(0, Number(e.target.value) || 0))}
+                  onValueChange={(n) => setTotalOverride(Math.max(0, n))}
                 />
               </label>
               <button type="button" className="btn btn--ghost" onClick={handleHoldSale} disabled={completingSale}>

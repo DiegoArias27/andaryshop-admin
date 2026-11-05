@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import type { ProductVariant } from '../api/types'
 import { CopyIcon, DragHandleIcon } from './icons'
 import { useToast } from '../hooks/useToast'
+import NumberField from './NumberField'
 
 interface VariantsEditorProps {
   productId: number
@@ -307,12 +308,12 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                 </td>
                 <td>
                   <div className="variant-stock-cell">
-                    <input
-                      type="number"
-                      min="0"
+                    <NumberField
+                      key={v.id}
+                      min={0}
                       value={v.stock}
                       className="stock-input"
-                      onChange={(e) => updateVariantField(v.id, 'stock', Number(e.target.value))}
+                      onValueChange={(n) => updateVariantField(v.id, 'stock', n)}
                     />
                     {v.stock === 0 && <span className="tag tag--outofstock">Agotado</span>}
                     {v.stock > 0 && v.stock <= LOW_STOCK_THRESHOLD && (
@@ -368,7 +369,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
             required
           />
           <input
-            type="number"
+            type="number" inputMode="numeric"
             min="0"
             placeholder="Stock"
             value={draft.stock}

@@ -290,7 +290,7 @@ export default function ProductEditor() {
       <label className="form-field">
         Precio (MXN)
         <input
-          type="number"
+          type="number" inputMode="decimal"
           step="0.01"
           min="0"
           value={form.price}
@@ -418,7 +418,7 @@ export default function ProductEditor() {
           <label className="form-field">
             Valor
             <input
-              type="number"
+              type="number" inputMode="decimal"
               step="0.01"
               min="0"
               value={form.discountValue}

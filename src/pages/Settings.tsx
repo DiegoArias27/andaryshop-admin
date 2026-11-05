@@ -95,7 +95,7 @@ export default function Settings() {
           <label className="form-field">
             Ancho (mm)
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.labelWidthMm}
               onChange={(e) => updateField('labelWidthMm', e.target.value)}
@@ -104,7 +104,7 @@ export default function Settings() {
           <label className="form-field">
             Alto (mm)
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.labelHeightMm}
               onChange={(e) => updateField('labelHeightMm', e.target.value)}
@@ -121,7 +121,7 @@ export default function Settings() {
           <label className="form-field">
             Mínimo de bajo stock
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.lowStockThreshold}
               onChange={(e) => updateField('lowStockThreshold', e.target.value)}
@@ -138,7 +138,7 @@ export default function Settings() {
           <label className="form-field">
             Mínimo vendido
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.bestsellerMinQty}
               onChange={(e) => updateField('bestsellerMinQty', e.target.value)}
@@ -147,7 +147,7 @@ export default function Settings() {
           <label className="form-field">
             Máximo de productos
             <input
-              type="number"
+              type="number" inputMode="numeric"
               min="1"
               value={draft.bestsellerLimit}
               onChange={(e) => updateField('bestsellerLimit', e.target.value)}

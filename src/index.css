@@ -26,6 +26,14 @@
   box-sizing: border-box;
 }
 
+/* Without this, a touch drag on a handle also tries to scroll/bounce the
+   page underneath it at the same time as touchDragPolyfill.ts is
+   translating that same gesture into reorder events — this stops the
+   browser's own gesture recognizer from fighting the drag. */
+[draggable='true'] {
+  touch-action: none;
+}
+
 html,
 body {
   margin: 0;

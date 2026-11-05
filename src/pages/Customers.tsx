@@ -48,7 +48,7 @@ function CustomerRow({ customer, onSaved }: { customer: Customer; onSaved: (c: C
       <td>
         {editing ? (
           <input
-            type="number"
+            type="number" inputMode="decimal"
             min="0"
             step="0.01"
             value={discount}
@@ -164,7 +164,7 @@ export default function Customers() {
           </label>
           <label className="form-field">
             Descuento por producto (MXN)
-            <input type="number" min="0" step="0.01" value={newDiscount} onChange={(e) => setNewDiscount(e.target.value)} />
+            <input type="number" inputMode="decimal" min="0" step="0.01" value={newDiscount} onChange={(e) => setNewDiscount(e.target.value)} />
           </label>
           {createError && <p className="form-error">{createError}</p>}
           <button type="submit" className="btn btn--accent" disabled={creating}>

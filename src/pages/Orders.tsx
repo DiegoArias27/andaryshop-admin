@@ -21,6 +21,7 @@ import { useConfirm } from '../hooks/useConfirm'
 import CardListSkeleton from '../components/CardListSkeleton'
 import GiftPickerSkeleton from '../components/GiftPickerSkeleton'
 import ReturnModal from '../components/ReturnModal'
+import NumberField from '../components/NumberField'
 import Modal from '../components/Modal'
 import ImageLightbox from '../components/ImageLightbox'
 import {
@@ -837,23 +838,22 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                     </td>
                     <td>{formatPrice(item.unitPrice)}</td>
                     <td>
-                      <input
-                        type="number"
-                        min="1"
+                      <NumberField
+                        key={idx}
+                        min={1}
                         value={item.quantity}
-                        onChange={(e) => updateDraftItem(idx, { quantity: Math.max(1, Number(e.target.value) || 1) })}
+                        onValueChange={(n) => updateDraftItem(idx, { quantity: Math.max(1, n) })}
                         style={{ width: 60 }}
                       />
                     </td>
                     <td>
-                      <input
-                        type="number"
-                        min="0"
+                      <NumberField
+                        key={idx}
+                        min={0}
                         step="0.01"
+                        inputMode="decimal"
                         value={item.discountAmount ?? 0}
-                        onChange={(e) =>
-                          updateDraftItem(idx, { discountAmount: Number(e.target.value) || 0, discountReason: null })
-                        }
+                        onValueChange={(n) => updateDraftItem(idx, { discountAmount: n, discountReason: null })}
                         style={{ width: 80 }}
                       />
                       {item.discountReason && <p className="page-block__hint">{item.discountReason}</p>}
@@ -894,7 +894,7 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
           <div className="form-grid" style={{ marginTop: 12 }}>
             <label className="form-field">
               Descuento total (MXN)
-              <input type="number" min="0" step="0.01" value={draftDiscount} onChange={(e) => setDraftDiscount(e.target.value)} />
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={draftDiscount} onChange={(e) => setDraftDiscount(e.target.value)} />
             </label>
             <label className="form-field">
               Notas
