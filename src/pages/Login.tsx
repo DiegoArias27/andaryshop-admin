@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import logo from '../assets/AndaryShop.jpg'
@@ -10,6 +10,27 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // body's own background is the light gray used by the rest of the admin
+  // (see index.css) — .login-page's own min-height:100dvh doesn't always
+  // cover a mobile browser's full scrollable area in every edge case (a
+  // momentary overscroll bounce, an address bar show/hide resizing the
+  // viewport), which otherwise briefly reveals that light background behind
+  // this page's own black one. Switching it to match while Login is
+  // mounted means whatever peeks through is the right tone regardless of
+  // which exact gap exposed it, and it's restored the instant this page
+  // unmounts (redirecting into the normal light-toned admin).
+  useEffect(() => {
+    const html = document.documentElement
+    const previousHtmlBackground = html.style.background
+    const previousBodyBackground = document.body.style.background
+    html.style.background = 'var(--black)'
+    document.body.style.background = 'var(--black)'
+    return () => {
+      html.style.background = previousHtmlBackground
+      document.body.style.background = previousBodyBackground
+    }
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
