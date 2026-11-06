@@ -202,7 +202,11 @@ img {
 .notifications-bell {
   position: fixed;
   right: 20px;
-  top: 16px;
+  /* Centers the 42px button in the 56px mobile topbar ((56-42)/2) — it was
+     16px, 2px too low, so its bottom edge poked past the topbar's own
+     bottom edge. Floats at the same spot on desktop too (no topbar there),
+     which is still a reasonable fixed position for it. */
+  top: 7px;
   z-index: 47;
 }
 
