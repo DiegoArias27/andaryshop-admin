@@ -169,6 +169,12 @@ function PartRow({
           placeholder="Precio (MXN)"
         />
       )}
+      {showPrice && part.price && (
+        <label className="filter-check-pill" title="Si lo dejas sin marcar, se elige automáticamente según las ventas reales.">
+          <input type="checkbox" checked={part.isFeatured} onChange={(e) => onUpdate({ isFeatured: e.target.checked })} />
+          <span>{part.isFeatured ? 'Más elegido' : 'Automático'}</span>
+        </label>
+      )}
       {showGift && (
         <label className="filter-check-pill">
           <input type="checkbox" checked={part.isGift} onChange={(e) => onUpdate({ isGift: e.target.checked })} />
@@ -197,6 +203,9 @@ interface PartDraft {
   requiredQty: string
   /** Only used for pricing_mode 'bundle' — this part's own tier price. */
   price: string
+  /** Only meaningful alongside price — manually pins "Más elegido" for this
+   * part instead of leaving it to the sales-derived automatic pick. */
+  isFeatured: boolean
   isGift: boolean
 }
 
@@ -207,7 +216,7 @@ function newPartKey() {
 }
 
 function newPartDraft(): PartDraft {
-  return { key: newPartKey(), categoryId: '', isSpecific: false, requiredQty: '1', price: '', isGift: false }
+  return { key: newPartKey(), categoryId: '', isSpecific: false, requiredQty: '1', price: '', isFeatured: false, isGift: false }
 }
 
 /** One priced variant of a 'combo' collection — its own total price and its
@@ -257,6 +266,7 @@ function draftFromCollection(c?: Collection) {
           isSpecific: !!p.is_specific,
           requiredQty: String(p.required_qty),
           price: p.price ?? '',
+          isFeatured: !!p.is_featured,
           isGift: !!p.is_gift,
         })
       ),
@@ -273,6 +283,7 @@ function draftFromCollection(c?: Collection) {
               isSpecific: !!p.is_specific,
               requiredQty: String(p.required_qty),
               price: '',
+              isFeatured: false,
               isGift: !!p.is_gift,
             })
           ),
@@ -327,7 +338,14 @@ function CollectionForm({
   }
 
   function updatePart(key: string, changes: Partial<PartDraft>) {
-    setDraft((d) => ({ ...d, parts: d.parts.map((p) => (p.key === key ? { ...p, ...changes } : p)) }))
+    setDraft((d) => ({
+      ...d,
+      // Mirrors Wholesale's own exclusivity — only one priced part can be
+      // "Más elegido" at a time, so checking one clears every other.
+      parts: d.parts.map((p) =>
+        p.key === key ? { ...p, ...changes } : changes.isFeatured ? { ...p, isFeatured: false } : p
+      ),
+    }))
   }
 
   function removePart(key: string) {
@@ -393,6 +411,7 @@ function CollectionForm({
                 isSpecific: p.isSpecific,
                 requiredQty: Number(p.requiredQty) > 0 ? Number(p.requiredQty) : 1,
                 price: p.price ? Number(p.price) : null,
+                isFeatured: p.price ? p.isFeatured : false,
                 isGift: p.isGift,
               }))
           : draft.pricingMode === 'unit'
@@ -917,6 +936,9 @@ function ProductPicker({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
             placeholder="Buscar por nombre o código de barras…"
           />
         </div>

@@ -456,7 +456,12 @@ export default function StockLookup() {
   }, [highlightedIndex, selectableEntries])
 
   function handleSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (selectableEntries.length === 0) return
+    if (selectableEntries.length === 0) {
+      // Nothing to pick, but still close the on-screen keyboard instead of
+      // leaving Enter do nothing at all.
+      if (e.key === 'Enter') e.currentTarget.blur()
+      return
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setHighlightedIndex((i) => Math.min(selectableEntries.length - 1, i + 1))
@@ -466,6 +471,7 @@ export default function StockLookup() {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       selectableEntries[highlightedIndex]?.onSelect()
+      e.currentTarget.blur()
     }
   }
 
@@ -1348,6 +1354,9 @@ export default function StockLookup() {
                         setShowCustomerSearch(true)
                       }}
                       onFocus={() => setShowCustomerSearch(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur()
+                      }}
                       placeholder="Buscar por nombre, correo o teléfono…"
                     />
                     {showCustomerSearch && customerOptions.length > 0 && (

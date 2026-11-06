@@ -185,7 +185,7 @@ export default function Wholesale() {
                         <td>{t.min_qty}</td>
                         <td>{t.max_qty ?? 'Sin límite'}</td>
                         <td>{formatPrice(t.price_per_unit)}</td>
-                        <td>{!!t.is_featured && '★'}</td>
+                        <td>{!!t.is_featured ? '★ Más elegido' : 'Automático'}</td>
                         <td>
                           <button type="button" className="btn btn--ghost btn--sm" onClick={() => startEdit(t)}>
                             Editar
@@ -235,13 +235,16 @@ export default function Wholesale() {
               onChange={(e) => setDraft((d) => ({ ...d, pricePerUnit: e.target.value }))}
               required
             />
-            <label className="filter-check-pill">
+            <label
+              className="filter-check-pill"
+              title="Si lo dejas sin marcar, se elige automáticamente según las ventas reales."
+            >
               <input
                 type="checkbox"
                 checked={draft.isFeatured}
                 onChange={(e) => setDraft((d) => ({ ...d, isFeatured: e.target.checked }))}
               />
-              <span>Más elegido</span>
+              <span>{draft.isFeatured ? 'Más elegido' : 'Automático'}</span>
             </label>
             <button type="submit" className="btn btn--primary btn--sm" disabled={creating}>
               {creating ? 'Guardando…' : '+ Agregar rango'}
@@ -300,7 +303,7 @@ export default function Wholesale() {
               checked={editDraft.isFeatured}
               onChange={(e) => setEditDraft((d) => ({ ...d, isFeatured: e.target.checked }))}
             />
-            <span>Marcar como "Más elegido"</span>
+            <span>{editDraft.isFeatured ? 'Más elegido' : 'Automático'}</span>
           </label>
           <p className="page-block__hint">
             Si lo dejas sin marcar, el rango "Más elegido" se elige automáticamente según las ventas reales.

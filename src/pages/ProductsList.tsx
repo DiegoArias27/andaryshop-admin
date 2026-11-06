@@ -223,6 +223,9 @@ export default function ProductsList() {
           <input
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
             placeholder="Buscar por nombre, marca o código de barras…"
           />
         </div>

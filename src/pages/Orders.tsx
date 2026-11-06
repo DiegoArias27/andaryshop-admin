@@ -358,7 +358,15 @@ function GiftProductPicker({ onPick, onCancel }: { onPick: (product: Product, va
     <div className="gift-picker">
       <div className="search-field">
         <SearchIcon />
-        <input placeholder="Buscar producto…" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+        <input
+          placeholder="Buscar producto…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+          }}
+          autoFocus
+        />
       </div>
       {!products && <GiftPickerSkeleton />}
       <div className="gift-picker__list">

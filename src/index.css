@@ -6009,6 +6009,10 @@ img {
 .order-card__phone {
   display: flex;
   align-items: center;
+  /* Without this, the input + Guardar/Cancelar buttons were one
+     unbreakable line that could run wider than the card itself on mobile
+     — this lets them drop to a second line instead of overflowing it. */
+  flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0 0;
   font-size: 16px;
@@ -6026,6 +6030,11 @@ img {
   border: 1px solid var(--gray-200);
   border-radius: 6px;
   font-size: 16px;
+  /* A bare <input> with no size/width set defaults to a browser-chosen
+     width wide enough on its own to push this row off-screen — a phone
+     number doesn't need more than this. */
+  width: 140px;
+  min-width: 0;
 }
 
 .order-card__phone input {

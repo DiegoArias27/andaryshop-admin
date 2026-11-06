@@ -117,6 +117,10 @@ export interface CollectionBundlePart {
    * independent "required_qty units of category_id for $price" tier,
    * instead of pooling toward the collection's flat bundle_qty/bundle_price. */
   price: string | null
+  /** Manually pins the "Más elegido" ribbon for this priced part — mirrors
+   * WholesaleTier.is_featured. Takes priority over the sales-data-derived
+   * collections.most_chosen_tier_key pick. Only meaningful alongside price. */
+  is_featured: number
   is_gift: number
   /** Only set for pricing_mode 'combo': which tier (variant) this part
    * belongs to — see CollectionComboTier. Null for 'bundle'/'unit'. */
@@ -140,6 +144,7 @@ export interface CollectionBundlePartInput {
   isSpecific: boolean
   requiredQty: number
   price?: number | null
+  isFeatured?: boolean
   isGift: boolean
 }
 

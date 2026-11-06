@@ -4,6 +4,7 @@ import type { Customer } from '../api/types'
 import { formatPrice } from '../utils/currency'
 import { useToast } from '../hooks/useToast'
 import TableSkeleton from '../components/TableSkeleton'
+import Modal from '../components/Modal'
 import { SearchIcon } from '../components/icons'
 
 function CustomerRow({ customer, onSaved }: { customer: Customer; onSaved: (c: Customer) => void }) {
@@ -88,6 +89,7 @@ export default function Customers() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
+  const [addOpen, setAddOpen] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
@@ -129,6 +131,7 @@ export default function Customers() {
       setNewName('')
       setNewPhone('')
       setNewDiscount('0')
+      setAddOpen(false)
       toast(`Cliente "${created.email}" agregado con éxito`)
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Error al crear cliente')
@@ -139,43 +142,63 @@ export default function Customers() {
 
   return (
     <div className="page-block">
-      <h1>Clientes</h1>
-      <p className="page-block__hint">
-        Cuentas de la tienda (inician sesión con Google). Ponle un descuento por correo para que se aplique
-        automáticamente en cada producto que pida — se etiqueta como "Cliente frecuente" en Ventas. Puedes agregar el
-        correo aquí antes de que la persona inicie sesión por primera vez; en cuanto entre con ese correo, el
-        descuento ya estará activo.
-      </p>
-
-      <div className="card" style={{ maxWidth: 560, marginBottom: 24 }}>
-        <h2>Agregar cliente</h2>
-        <form onSubmit={handleCreate}>
-          <label className="form-field">
-            Correo
-            <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="cliente@gmail.com" required />
-          </label>
-          <label className="form-field">
-            Nombre (opcional)
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej. Juan Pérez" />
-          </label>
-          <label className="form-field">
-            Teléfono (opcional)
-            <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Ej. 4491234567" />
-          </label>
-          <label className="form-field">
-            Descuento por producto (MXN)
-            <input type="number" inputMode="decimal" min="0" step="0.01" value={newDiscount} onChange={(e) => setNewDiscount(e.target.value)} />
-          </label>
-          {createError && <p className="form-error">{createError}</p>}
-          <button type="submit" className="btn btn--accent" disabled={creating}>
-            {creating ? 'Guardando…' : '+ Agregar cliente'}
-          </button>
-        </form>
+      <div className="page-block__header">
+        <div>
+          <h1>Clientes</h1>
+          <p className="page-block__hint">
+            Cuentas de la tienda (inician sesión con Google). Ponle un descuento por correo para que se aplique
+            automáticamente en cada producto que pida — se etiqueta como "Cliente frecuente" en Ventas. Puedes
+            agregar el correo aquí antes de que la persona inicie sesión por primera vez; en cuanto entre con ese
+            correo, el descuento ya estará activo.
+          </p>
+        </div>
+        <button type="button" className="btn btn--accent" onClick={() => setAddOpen(true)}>
+          + Agregar cliente
+        </button>
       </div>
+
+      {addOpen && (
+        <Modal title="Agregar cliente" onClose={() => setAddOpen(false)}>
+          <form onSubmit={handleCreate}>
+            <label className="form-field">
+              Correo
+              <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="cliente@gmail.com" required />
+            </label>
+            <label className="form-field">
+              Nombre (opcional)
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej. Juan Pérez" />
+            </label>
+            <label className="form-field">
+              Teléfono (opcional)
+              <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Ej. 4491234567" />
+            </label>
+            <label className="form-field">
+              Descuento por producto (MXN)
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={newDiscount} onChange={(e) => setNewDiscount(e.target.value)} />
+            </label>
+            {createError && <p className="form-error">{createError}</p>}
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost" onClick={() => setAddOpen(false)} disabled={creating}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn--accent" disabled={creating}>
+                {creating ? 'Guardando…' : 'Agregar cliente'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       <div className="search-field" style={{ maxWidth: 320, marginBottom: 16 }}>
         <SearchIcon />
-        <input placeholder="Buscar por nombre o correo…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input
+          placeholder="Buscar por nombre o correo…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+          }}
+        />
       </div>
 
       {loading && <TableSkeleton columns={6} />}
