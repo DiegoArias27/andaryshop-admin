@@ -256,7 +256,14 @@ export default function ProductEditor() {
     }
   }
 
-  if (loading) return <FormSkeleton fields={7} />
+  if (loading) {
+    return (
+      <div className="page-block">
+        <h1>Editar Producto</h1>
+        <FormSkeleton fields={7} />
+      </div>
+    )
+  }
 
   const basicFields = (
     <div className="form-grid">
