@@ -1666,6 +1666,18 @@ img {
   gap: 20px;
   position: sticky;
   top: 24px;
+  /* .editor-side is itself a grid item of .editor-grid (same reasoning as
+     .editor-main's own min-width: 0) — without this, GalleryManager's
+     image rows (only rendered once a product actually has a photo, which
+     is exactly why this never showed up testing with image-less products)
+     push it wider than its grid track instead of ever shrinking to fit,
+     stretching the whole page on mobile where .editor-grid collapses to a
+     single column. */
+  min-width: 0;
+}
+
+.editor-side > * {
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
