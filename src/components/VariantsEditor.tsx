@@ -18,7 +18,7 @@ export interface VariantsEditorHandle {
   cancel: () => void
 }
 
-const emptyDraft = { size: '', colorName: '', colorHex: '#0d0d0d', barcode: '', stock: '0' }
+const emptyDraft = { size: '', colorName: '', colorHex: '#0d0d0d', barcode: '', stock: '' }
 const LOW_STOCK_THRESHOLD = 5
 
 let tempIdCounter = -1
@@ -230,6 +230,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
       </div>
 
       <div className="editable-card__content">
+        <p className="page-block__hint table-wrap__scroll-hint">👉 Desliza la tabla hacia los lados para ver todas las columnas.</p>
         <div className="table-wrap">
           <table className="admin-table">
           <thead>
@@ -314,6 +315,17 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                       value={v.stock}
                       className="stock-input"
                       onValueChange={(n) => updateVariantField(v.id, 'stock', n)}
+                      // type="number" inputs don't support .select() in
+                      // Chrome (selectionStart/End are always null on them) —
+                      // clearing the value outright is what actually lets a
+                      // click/tap here replace the old number by typing,
+                      // instead of needing to delete each digit first. Safe:
+                      // NumberField's own onBlur restores the last committed
+                      // value if this is left empty (clicked away without
+                      // typing a new one), so nothing is lost by accident.
+                      onFocus={(e) => {
+                        e.target.value = ''
+                      }}
                     />
                     {v.stock === 0 && <span className="tag tag--outofstock">Agotado</span>}
                     {v.stock > 0 && v.stock <= LOW_STOCK_THRESHOLD && (

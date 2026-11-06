@@ -2142,6 +2142,21 @@ img {
   color: var(--red);
 }
 
+/* The table itself already scrolls sideways (table-wrap's own overflow-x:
+   auto) — nothing about a plain table signals that on its own, so without
+   this an admin on a narrow screen has no way to know there's more to the
+   right (Stock, the remove button) than what's visible. Only shown where
+   the table actually doesn't fit — past 900px it does. */
+.table-wrap__scroll-hint {
+  display: block;
+}
+
+@media (min-width: 900px) {
+  .table-wrap__scroll-hint {
+    display: none;
+  }
+}
+
 .editable-card__header {
   display: flex;
   align-items: center;
