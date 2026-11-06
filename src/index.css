@@ -1549,6 +1549,7 @@ img {
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 20px;
 }
@@ -1582,6 +1583,22 @@ img {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  /* .editor-main is itself a grid item of .editor-grid — same "won't
+     shrink below content" default applies at that level too, so this is
+     needed on top of the rule below, not instead of it. */
+  min-width: 0;
+}
+
+/* A flex/grid item's default min-width is auto, not 0 — it refuses to
+   shrink below its own content's natural width. VariantsEditor's wide
+   variants table has a horizontal scrollbar of its own (.table-wrap's
+   overflow-x: auto) specifically so it doesn't need the whole page to be
+   that wide, but without this, the table's full width wins anyway: it
+   pushes .editor-main (and everything else in it, including that
+   section's own "Guardar" button) wider than the screen instead of ever
+   reaching .table-wrap's overflow. */
+.editor-main > * {
+  min-width: 0;
 }
 
 .discount-priority-banner {
