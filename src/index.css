@@ -1137,6 +1137,14 @@ img {
   border-bottom: none;
 }
 
+.admin-table__row--clickable {
+  cursor: pointer;
+}
+
+.admin-table__row--clickable:hover {
+  background: var(--gray-50);
+}
+
 .admin-table__thumb {
   width: 44px;
   min-width: 44px;
@@ -1947,11 +1955,15 @@ img {
   transform: translateX(-50%);
   background: var(--red);
   color: var(--white);
-  font-size: 16px;
+  /* Exempt from the usual 16px text minimum — this is a tiny corner tag on
+     a 44px thumbnail (see .gallery-manager__thumb img), not reading text;
+     at 16px bold uppercase it was wider than the thumbnail itself and
+     covered the photo instead of just labeling it. */
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 999px;
   white-space: nowrap;
 }

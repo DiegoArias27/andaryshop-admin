@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Brand, Category, Collection, DiscountType, Product, ProductCollectionMembership } from '../api/types'
 import { formatPrice } from '../utils/currency'
@@ -25,6 +25,7 @@ function totalStockOf(p: Product): number {
 }
 
 export default function ProductsList() {
+  const navigate = useNavigate()
   const settings = useAppSettings()
   const lowStockThreshold = settings?.low_stock_threshold ?? 5
   const [products, setProducts] = useState<Product[]>([])
@@ -376,12 +377,19 @@ export default function ProductsList() {
                 const hasOutOfStockVariant = p.variants.some((v) => v.stock === 0)
                 const priceInfo = getProductPriceInfo(p)
                 return (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    className="admin-table__row--clickable"
+                    onClick={() => navigate(`/productos/${p.id}`)}
+                  >
                     <td>
                       <button
                         type="button"
                         className="icon-btn"
-                        onClick={() => toggleSelect(p.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleSelect(p.id)
+                        }}
                         aria-label="Seleccionar"
                       >
                         {selectedIds.includes(p.id) ? <CheckSquareIcon /> : <SquareIcon />}
@@ -392,7 +400,10 @@ export default function ProductsList() {
                         <button
                           type="button"
                           className="admin-table__thumb-btn"
-                          onClick={() => setViewerImage(p.main_image_url)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setViewerImage(p.main_image_url)
+                          }}
                           aria-label="Ver imagen en grande"
                         >
                           <img src={p.main_image_url} alt="" className="admin-table__thumb" />
@@ -402,10 +413,10 @@ export default function ProductsList() {
                       )}
                     </td>
                     <td>
-                      <Link to={`/productos/${p.id}`} className="admin-table__name">
+                      <Link to={`/productos/${p.id}`} className="admin-table__name" onClick={(e: ReactMouseEvent) => e.stopPropagation()}>
                         {p.name}
                       </Link>
-                      <div className="admin-table__badges">
+                      <div className="admin-table__badges" onClick={(e) => e.stopPropagation()}>
                         {!!p.is_new && <span className="tag">Nuevo</span>}
                         {!!p.is_bestseller && <span className="tag">Más vendido</span>}
                         {priceInfo.type === 'discount' && <span className="tag tag--discount">Descuento</span>}
@@ -441,7 +452,7 @@ export default function ProductsList() {
                         </>
                       )}
                     </td>
-                    <td className="admin-table__actions">
+                    <td className="admin-table__actions" onClick={(e) => e.stopPropagation()}>
                       <Link to={`/productos/${p.id}`} className="btn btn--ghost btn--sm">
                         Editar
                       </Link>
