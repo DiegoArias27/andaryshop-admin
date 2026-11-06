@@ -43,6 +43,11 @@ body {
      background, even on a page like Login whose own background is black —
      which reads as a white flash/bar at the edges. */
   overscroll-behavior-y: none;
+  /* Same idea sideways — without it, a sideways swipe/bounce on a page with
+     no real horizontal overflow still rubber-bands a few pixels right
+     before snapping back, which reads as "I can still scroll right" even
+     though there's nothing actually there to scroll to. */
+  overscroll-behavior-x: none;
 }
 
 body {
