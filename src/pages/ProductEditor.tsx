@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Brand, Category, DiscountType, Product, ProductImage } from '../api/types'
 import GalleryManager from '../components/GalleryManager'
-import DraftGalleryManager from '../components/DraftGalleryManager'
 import ToggleSwitch from '../components/ToggleSwitch'
 import VariantsEditor, { type VariantsEditorHandle } from '../components/VariantsEditor'
 import { getProductPriceInfo } from '../utils/discount'
@@ -74,19 +73,6 @@ export default function ProductEditor() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [savedForm, setSavedForm] = useState<FormState>(emptyForm)
   const [images, setImages] = useState<ProductImage[]>([])
-  // New-product-only: every image uploaded before the product exists (no
-  // product_id yet to attach a gallery to) — the first one is always the
-  // cover photo; the rest get attached as gallery images right after
-  // creation succeeds, in the same order arranged here.
-  const [draftImages, setDraftImages] = useState<string[]>([])
-  // Kept in sync below so the unmount cleanup effect (which only runs once,
-  // with an empty dep array) always sees the latest draft list instead of
-  // the one captured when it was first set up.
-  const draftImagesRef = useRef<string[]>([])
-  // Flips true right before navigating away after a successful create, so
-  // that same unmount doesn't turn around and delete the photos that now
-  // belong to the real, just-saved product.
-  const createdRef = useRef(false)
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(!isNewProduct)
   const [saving, setSaving] = useState(false)
@@ -110,26 +96,6 @@ export default function ProductEditor() {
       .getBrands()
       .then(setBrands)
       .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    draftImagesRef.current = draftImages
-  }, [draftImages])
-
-  // Covers every way of leaving the create-product form without saving —
-  // the back arrow, the "Cancelar" button, browser back/forward — since all
-  // of them navigate to a different route and unmount this component.
-  // Anything left in draftImages at that point was uploaded but never
-  // attached to a real product, so it's safe to delete.
-  useEffect(() => {
-    if (!isNewProduct) return
-    return () => {
-      if (createdRef.current) return
-      for (const url of draftImagesRef.current) {
-        api.deleteImage(url).catch(() => {})
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -221,15 +187,20 @@ export default function ProductEditor() {
     }
   }
 
+  // Creates the product from just the basics — Visibilidad, Descuento,
+  // Tallas e Inventario and Imágenes all become editable right after,
+  // exactly like an existing product (see the unified layout below). Tallas
+  // comes before Imágenes there on purpose: a photo can only be tagged by
+  // color once that color actually exists (see GalleryManager).
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
     setError(null)
     try {
-      const created = await api.createProduct({ ...toApiPayload(form), mainImageUrl: draftImages[0] ?? null })
-      const rest = draftImages.slice(1)
-      if (rest.length > 0) await api.addProductImages(created.id, rest)
-      createdRef.current = true
+      // No photo yet — Imágenes only becomes available below once the
+      // product (and its colors) exist; GalleryManager sets this once the
+      // first one is added there.
+      const created = await api.createProduct({ ...toApiPayload(form), mainImageUrl: null })
       toast(`Producto "${created.name}" creado con éxito`)
       navigate(`/productos/${created.id}`, { replace: true })
     } catch (err) {
@@ -241,14 +212,15 @@ export default function ProductEditor() {
 
   // Name/description/price/visibility/discount are saved independently
   // per-section above — this button's only remaining job for an existing
-  // product is committing variant changes.
+  // product is committing variant changes. Stays on the page afterward
+  // (doesn't navigate away) — Imágenes comes right after Tallas now, and
+  // tagging a photo by color needs that color to already exist.
   async function handleSaveVariants() {
     setSaving(true)
     setError(null)
     try {
       await variantsRef.current?.commit()
       toast('Tallas e inventario actualizados con éxito')
-      navigate('/productos')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
     } finally {
@@ -493,12 +465,7 @@ export default function ProductEditor() {
             </SectionCard>
           )}
 
-          {isNewProduct ? (
-            <div className="card">
-              <h2>Descuento</h2>
-              {discountFields}
-            </div>
-          ) : (
+          {!isNewProduct && (
             <SectionCard
               title="Descuento"
               hint={!!product?.collections.length && `Colecciones: ${product.collections.map((c) => c.name).join(', ')}`}
@@ -512,12 +479,7 @@ export default function ProductEditor() {
             </SectionCard>
           )}
 
-          {isNewProduct ? (
-            <div className="card">
-              <h2>Visibilidad</h2>
-              {visibilityFields}
-            </div>
-          ) : (
+          {!isNewProduct && (
             <SectionCard
               title="Visibilidad"
               dirty={isSectionDirty('visibility')}
@@ -529,37 +491,39 @@ export default function ProductEditor() {
               {visibilityFields}
             </SectionCard>
           )}
+
+          {/* Right after Visibilidad/Descuento and before Imágenes — on
+              mobile (where this column and editor-side below stack in DOM
+              order) that puts Tallas e Inventario right before Imágenes, so
+              a photo's color dropdown there actually has colors to offer
+              instead of the two being in the wrong order to depend on each
+              other. */}
+          {!isNewProduct && product && (
+            <div className="card variants-editor">
+              <VariantsEditor
+                ref={variantsRef}
+                productId={product.id}
+                initialVariants={product.variants}
+                onDirtyChange={setVariantsEditing}
+              />
+            </div>
+          )}
         </div>
 
-        <div className="editor-side">
-          <div className="card">
-            {isNewProduct ? (
-              <>
-                <h2>Imágenes</h2>
-                <DraftGalleryManager images={draftImages} onChange={setDraftImages} />
-              </>
-            ) : (
+        {!isNewProduct && product && (
+          <div className="editor-side">
+            <div className="card">
               <GalleryManager productId={Number(id)} images={images} colors={productColors} onCommitted={setImages} />
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {isNewProduct && (
         <p className="page-block__hint">
-          Guarda el producto primero; después podrás agregar tallas/colores/stock y más fotos.
+          Visibilidad, descuento, tallas/colores/stock y fotos se agregan aquí mismo en cuanto guardes esta
+          información básica.
         </p>
-      )}
-
-      {!isNewProduct && product && (
-        <div className="card variants-editor" style={{ marginTop: 32, maxWidth: 1000 }}>
-          <VariantsEditor
-            ref={variantsRef}
-            productId={product.id}
-            initialVariants={product.variants}
-            onDirtyChange={setVariantsEditing}
-          />
-        </div>
       )}
 
       <div className="form-actions">
@@ -568,7 +532,7 @@ export default function ProductEditor() {
         </button>
         {isNewProduct ? (
           <button type="submit" form="product-form" className="btn btn--accent" disabled={saving}>
-            {saving ? 'Guardando…' : 'Crear producto'}
+            {saving ? 'Guardando…' : 'Crear y continuar'}
           </button>
         ) : (
           variantsEditing && (
