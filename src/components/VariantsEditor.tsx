@@ -21,8 +21,6 @@ export interface VariantsEditorHandle {
 const emptyDraft = { size: '', colorName: '', colorHex: '#0d0d0d', barcode: '', stock: '' }
 const LOW_STOCK_THRESHOLD = 5
 
-let tempIdCounter = -1
-
 function sanitizeCode(value: string, len: number): string {
   const cleaned = value
     .normalize('NFD')
@@ -105,22 +103,47 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
     onDirtyChange?.(dirty)
   }, [dirty, onDirtyChange])
 
-  function handleAdd(e: FormEvent) {
+  // Adding a variant saves immediately instead of joining the dirty/"Guardar
+  // tallas e inventario" batch like editing an existing row still does — it
+  // was confusing to add one and have it just sit there unsaved, easy to
+  // lose by navigating away. A toast with "Deshacer" covers the one case
+  // that flow used to: adding by mistake.
+  async function handleAdd(e: FormEvent) {
     e.preventDefault()
     if (!draft.size || !draft.colorName || !draft.barcode) return
-    const newVariant: ProductVariant = {
-      id: tempIdCounter--,
-      product_id: productId,
-      size: draft.size,
-      color_name: draft.colorName,
-      color_hex: draft.colorHex,
-      barcode: draft.barcode,
-      stock: Number(draft.stock) || 0,
-      sort_order: variants.length,
-    }
-    setVariants((prev) => [...prev, newVariant])
+    const submitted = draft
     setDraft(emptyDraft)
     setBarcodeManuallyEdited(false)
+    try {
+      const created = await api.addVariant(productId, {
+        size: submitted.size,
+        colorName: submitted.colorName,
+        colorHex: submitted.colorHex,
+        barcode: submitted.barcode,
+        stock: Number(submitted.stock) || 0,
+        sortOrder: variants.length,
+      })
+      setVariants((prev) => [...prev, created])
+      setBaseline((prev) => [...prev, created])
+      toast(`Variante "${created.size} · ${created.color_name}" agregada`, 'success', {
+        label: 'Deshacer',
+        onClick: () => handleUndoAdd(created),
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al agregar la variante')
+      setDraft(submitted)
+      setBarcodeManuallyEdited(true)
+    }
+  }
+
+  async function handleUndoAdd(created: ProductVariant) {
+    try {
+      await api.deleteVariant(created.id)
+      setVariants((prev) => prev.filter((v) => v.id !== created.id))
+      setBaseline((prev) => prev.filter((v) => v.id !== created.id))
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al deshacer', 'error')
+    }
   }
 
   function updateVariantField<K extends keyof ProductVariant>(variantId: number, field: K, value: ProductVariant[K]) {
@@ -139,10 +162,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   }
 
   function handleDelete(variantId: number) {
-    if (variantId < 0) {
-      setVariants((prev) => prev.filter((v) => v.id !== variantId))
-      return
-    }
     setVariants((prev) => prev.filter((v) => v.id !== variantId))
     setPendingDeleteIds((prev) => [...prev, variantId])
   }
@@ -181,18 +200,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
         const nextVariants: ProductVariant[] = []
         for (let i = 0; i < variants.length; i++) {
           const v = variants[i]
-          if (v.id < 0) {
-            const created = await api.addVariant(productId, {
-              size: v.size,
-              colorName: v.color_name,
-              colorHex: v.color_hex,
-              barcode: v.barcode,
-              stock: v.stock,
-              sortOrder: i,
-            })
-            nextVariants.push(created)
-            continue
-          }
           const original = baseline.find((b) => b.id === v.id)
           const rowChanged = original && isDirtyRow(v, original)
           const orderMoved = original && original.sort_order !== i

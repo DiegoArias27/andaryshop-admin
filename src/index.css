@@ -1059,6 +1059,11 @@ img {
   margin: 8px 0 16px;
 }
 
+.page-block__hint--warning {
+  color: var(--amber);
+  font-weight: 600;
+}
+
 .badge-pill {
   display: inline-flex;
   align-items: center;
@@ -4738,6 +4743,22 @@ img {
   flex: 1;
   font-size: 16px;
   line-height: 1.45;
+}
+
+.toast__action {
+  flex-shrink: 0;
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.toast__action:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .toast__close {

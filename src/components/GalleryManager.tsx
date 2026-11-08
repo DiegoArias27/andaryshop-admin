@@ -237,6 +237,13 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
         mostrarán las marcadas como "General".
       </p>
 
+      {colors.length > 1 && images.length > 0 && images.every((img) => !img.color_name) && (
+        <p className="page-block__hint page-block__hint--warning">
+          ⚠️ Ninguna foto tiene un color asignado — en la tienda, elegir cualquiera de los {colors.length} colores de
+          este producto va a mostrar siempre la misma foto. Asigna al menos una foto por color abajo.
+        </p>
+      )}
+
       {error && <p className="form-error">{error}</p>}
 
       {visibleOrder.length > 0 && (
