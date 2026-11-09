@@ -176,6 +176,13 @@ export default function StockLookup() {
     // sale — no separate "Agregar" click. Detecting the same variant again
     // just stacks another unit onto that line.
     if (!restockMode) {
+      // Reabastecer (restockMode) deliberately still wants to find/select a
+      // 0-stock variant (that's the whole point there) — only the sale path
+      // blocks adding one.
+      if (data.stock <= 0) {
+        toast(`"${data.product_name}" — talla ${data.size} · ${data.color_name} no tiene disponibles.`, 'error')
+        return
+      }
       const product = allProducts.find((p) => p.id === data.product_id)
       if (product) {
         addLineToSale(
@@ -485,7 +492,10 @@ export default function StockLookup() {
   }
 
   function handlePickProduct(p: Product) {
-    if (p.variants.length === 0) return
+    if (p.variants.length === 0) {
+      toast(`"${p.name}" no tiene tallas ni colores configurados — no se puede vender.`, 'error')
+      return
+    }
     if (bulkMode) {
       if (p.variants.length === 1) {
         toggleVariantSelection(p.variants[0].id)

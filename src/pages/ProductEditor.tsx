@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Brand, Category, DiscountType, Product, ProductImage } from '../api/types'
 import GalleryManager from '../components/GalleryManager'
@@ -66,7 +66,9 @@ export default function ProductEditor() {
   const { id } = useParams<{ id: string }>()
   const isNewProduct = !id
   const navigate = useNavigate()
+  const location = useLocation()
   const variantsRef = useRef<VariantsEditorHandle>(null)
+  const variantsSectionRef = useRef<HTMLDivElement>(null)
 
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -142,6 +144,17 @@ export default function ProductEditor() {
       ignore = true
     }
   }, [id, isNewProduct])
+
+  // A low/out-of-stock notification links straight to #variantes (see
+  // notificationLink.ts) — jumps to Tallas e Inventario once it's actually
+  // rendered, instead of just landing at the top on Información Básica.
+  useEffect(() => {
+    if (loading || location.hash !== '#variantes') return
+    const frame = requestAnimationFrame(() => {
+      variantsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [loading, location.hash])
 
   const productColors = useMemo(() => {
     const seen = new Set<string>()
@@ -506,7 +519,7 @@ export default function ProductEditor() {
               instead of the two being in the wrong order to depend on each
               other. */}
           {!isNewProduct && product && (
-            <div className="card variants-editor">
+            <div className="card variants-editor" ref={variantsSectionRef}>
               <VariantsEditor
                 ref={variantsRef}
                 productId={product.id}

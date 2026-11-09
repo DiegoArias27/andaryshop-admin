@@ -42,6 +42,15 @@ export default function ImageCropModal({ imageUrl, onCancel, onSave }: ImageCrop
     setCrop({ x: (width - cropWidth) / 2, y: (height - cropHeight) / 2, width: cropWidth, height: cropHeight })
   }
 
+  // crossOrigin="anonymous" below (needed so the canvas crop isn't "tainted"
+  // by a cross-origin photo) makes the browser treat a missing/incorrect
+  // Access-Control-Allow-Origin from wherever the photo is hosted as a load
+  // failure — the image never renders, onLoad never fires (no crop box, no
+  // error) with nothing else explaining why. This at least says so.
+  function handleImageError() {
+    setError('No se pudo cargar esta imagen para recortarla — el servidor donde está alojada no permite leerla desde aquí (CORS).')
+  }
+
   function startDrag(e: ReactPointerEvent, mode: DragMode) {
     if (!crop) return
     e.preventDefault()
@@ -159,6 +168,7 @@ export default function ImageCropModal({ imageUrl, onCancel, onSave }: ImageCrop
             alt=""
             crossOrigin="anonymous"
             onLoad={handleImageLoad}
+            onError={handleImageError}
             className="crop-modal__image"
             draggable={false}
           />

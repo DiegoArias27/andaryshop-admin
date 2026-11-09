@@ -20,6 +20,7 @@ const BELL_LIMIT = 5
  * happening automatically just from opening the panel. */
 export default function NotificationsBell() {
   const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
   const [rows, setRows] = useState<AppNotification[]>([])
   const [unread, setUnread] = useState(0)
   const [pushStatus, setPushStatus] = useState<'idle' | 'subscribing' | 'on' | 'denied'>('idle')
@@ -53,6 +54,25 @@ export default function NotificationsBell() {
       clearInterval(interval)
     }
   }, [])
+
+  // Closes on an outside click/tap, or on scrolling the page — scroll
+  // moves the bell away from wherever the panel was positioned relative
+  // to it, same reasoning ZoomImage closes its own popout on scroll for.
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    function handleScroll() {
+      setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true })
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', handleScroll, { capture: true })
+    }
+  }, [open])
 
   async function handleEnablePush() {
     setPushStatus('subscribing')
@@ -91,7 +111,7 @@ export default function NotificationsBell() {
   }
 
   return (
-    <div className="notifications-bell">
+    <div className="notifications-bell" ref={wrapRef}>
       {open && (
         <div className="notifications-bell__panel">
           <div className="notifications-bell__header">

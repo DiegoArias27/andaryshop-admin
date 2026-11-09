@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import type { ProductVariant } from '../api/types'
 import { CopyIcon, DragHandleIcon } from './icons'
 import { useToast } from '../hooks/useToast'
+import { useConfirm } from '../hooks/useConfirm'
 import NumberField from './NumberField'
 
 interface VariantsEditorProps {
@@ -59,12 +60,12 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 ) {
   const [baseline, setBaseline] = useState<ProductVariant[]>(initialVariants)
   const [variants, setVariants] = useState<ProductVariant[]>(initialVariants)
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<number[]>([])
   const [draft, setDraft] = useState(emptyDraft)
   const [barcodeManuallyEdited, setBarcodeManuallyEdited] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const confirm = useConfirm()
 
   // Suggests a barcode as soon as talla+color are both filled — same
   // product, same base, only the size/color suffix changes — without
@@ -86,10 +87,12 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
     }
   }
 
+  // Stock has its own immediate save (see handleStockBlur) and delete is
+  // immediate too (see handleDelete) — neither counts toward this dirty/
+  // batch flow (size, color and barcode edits, plus reordering, still do).
   function isDirtyRow(v: ProductVariant, original: ProductVariant | undefined) {
     if (!original) return true
     return (
-      original.stock !== v.stock ||
       original.size !== v.size ||
       original.color_name !== v.color_name ||
       original.color_hex !== v.color_hex ||
@@ -99,11 +102,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
   const orderChanged = variants.map((v) => v.id).join(',') !== baseline.map((v) => v.id).join(',')
 
-  const dirty =
-    orderChanged ||
-    pendingDeleteIds.length > 0 ||
-    variants.length !== baseline.length ||
-    variants.some((v) => isDirtyRow(v, baseline.find((b) => b.id === v.id)))
+  const dirty = orderChanged || variants.some((v) => isDirtyRow(v, baseline.find((b) => b.id === v.id)))
 
   useEffect(() => {
     onDirtyChange?.(dirty)
@@ -114,10 +113,10 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   }, [baseline, onVariantsChange])
 
   // Adding a variant saves immediately instead of joining the dirty/"Guardar
-  // tallas e inventario" batch like editing an existing row still does — it
+  // tallas e inventario" batch like size/color/barcode edits still do — it
   // was confusing to add one and have it just sit there unsaved, easy to
-  // lose by navigating away. A toast with "Deshacer" covers the one case
-  // that flow used to: adding by mistake.
+  // lose by navigating away. Just a confirmation — "Deshacer" here would be
+  // redundant with the row's own "Eliminar" right after adding by mistake.
   async function handleAdd(e: FormEvent) {
     e.preventDefault()
     if (!draft.size || !draft.colorName || !draft.barcode) return
@@ -135,10 +134,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
       })
       setVariants((prev) => [...prev, created])
       setBaseline((prev) => [...prev, created])
-      toast(`Variante "${created.size} · ${created.color_name}" agregada`, 'success', {
-        label: 'Deshacer',
-        onClick: () => handleUndoAdd(created),
-      })
+      toast(`Variante "${created.size} · ${created.color_name}" agregada`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al agregar la variante')
       setDraft(submitted)
@@ -146,18 +142,53 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
     }
   }
 
-  async function handleUndoAdd(created: ProductVariant) {
+  function updateVariantField<K extends keyof ProductVariant>(variantId: number, field: K, value: ProductVariant[K]) {
+    setVariants((prev) => prev.map((v) => (v.id === variantId ? { ...v, [field]: value } : v)))
+  }
+
+  function saveVariantFields(v: ProductVariant, overrides: Partial<ProductVariant> = {}) {
+    return api.updateVariant(v.id, {
+      size: overrides.size ?? v.size,
+      colorName: overrides.color_name ?? v.color_name,
+      colorHex: overrides.color_hex ?? v.color_hex,
+      barcode: overrides.barcode ?? v.barcode,
+      stock: overrides.stock ?? v.stock,
+      sortOrder: overrides.sort_order ?? v.sort_order,
+    })
+  }
+
+  // Stock saves immediately on blur (not part of the dirty/"Guardar tallas
+  // e inventario" batch) — it's the field changed most often and on its
+  // own, and "Deshacer" covers typing the wrong number by mistake.
+  async function handleStockBlur(variantId: number) {
+    const current = variants.find((x) => x.id === variantId)
+    const original = baseline.find((x) => x.id === variantId)
+    if (!current || !original || current.stock === original.stock) return
+    const previousStock = original.stock
     try {
-      await api.deleteVariant(created.id)
-      setVariants((prev) => prev.filter((v) => v.id !== created.id))
-      setBaseline((prev) => prev.filter((v) => v.id !== created.id))
+      const updated = await saveVariantFields(current)
+      setVariants((prev) => prev.map((x) => (x.id === variantId ? updated : x)))
+      setBaseline((prev) => prev.map((x) => (x.id === variantId ? updated : x)))
+      toast(`Stock de "${updated.size} · ${updated.color_name}" actualizado a ${updated.stock}`, 'success', {
+        label: 'Deshacer',
+        onClick: () => handleUndoStock(variantId, previousStock),
+      })
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Error al deshacer', 'error')
+      setError(err instanceof Error ? err.message : 'Error al actualizar el stock')
+      setVariants((prev) => prev.map((x) => (x.id === variantId ? { ...x, stock: previousStock } : x)))
     }
   }
 
-  function updateVariantField<K extends keyof ProductVariant>(variantId: number, field: K, value: ProductVariant[K]) {
-    setVariants((prev) => prev.map((v) => (v.id === variantId ? { ...v, [field]: value } : v)))
+  async function handleUndoStock(variantId: number, previousStock: number) {
+    const current = variants.find((x) => x.id === variantId) ?? baseline.find((x) => x.id === variantId)
+    if (!current) return
+    try {
+      const updated = await saveVariantFields(current, { stock: previousStock })
+      setVariants((prev) => prev.map((x) => (x.id === variantId ? updated : x)))
+      setBaseline((prev) => prev.map((x) => (x.id === variantId ? updated : x)))
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al deshacer', 'error')
+    }
   }
 
   // An existing row's barcode has no auto-fill effect like the "add new"
@@ -171,9 +202,24 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
     updateVariantField(v.id, 'barcode', suggestion)
   }
 
-  function handleDelete(variantId: number) {
-    setVariants((prev) => prev.filter((v) => v.id !== variantId))
-    setPendingDeleteIds((prev) => [...prev, variantId])
+  // Immediate (not part of the Guardar batch) — a confirm dialog first is
+  // the safety net here instead of an after-the-fact "Deshacer".
+  async function handleDelete(v: ProductVariant) {
+    const ok = await confirm({
+      title: `¿Eliminar la variante "${v.size} · ${v.color_name}"?`,
+      message: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await api.deleteVariant(v.id)
+      setVariants((prev) => prev.filter((x) => x.id !== v.id))
+      setBaseline((prev) => prev.filter((x) => x.id !== v.id))
+      toast(`Variante "${v.size} · ${v.color_name}" eliminada`)
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al eliminar la variante', 'error')
+    }
   }
 
   function handleDragOver(e: DragEvent, index: number) {
@@ -192,7 +238,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
   function handleCancelEdits() {
     setVariants(baseline)
-    setPendingDeleteIds([])
     setDraft(emptyDraft)
     setBarcodeManuallyEdited(false)
     setError(null)
@@ -203,10 +248,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
       if (!dirty) return
       setError(null)
       try {
-        for (const id of pendingDeleteIds) {
-          await api.deleteVariant(id)
-        }
-
         const nextVariants: ProductVariant[] = []
         for (let i = 0; i < variants.length; i++) {
           const v = variants[i]
@@ -214,14 +255,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
           const rowChanged = original && isDirtyRow(v, original)
           const orderMoved = original && original.sort_order !== i
           if (rowChanged || orderMoved) {
-            const updated = await api.updateVariant(v.id, {
-              size: v.size,
-              colorName: v.color_name,
-              colorHex: v.color_hex,
-              barcode: v.barcode,
-              stock: v.stock,
-              sortOrder: i,
-            })
+            const updated = await saveVariantFields(v, { sort_order: i })
             nextVariants.push(updated)
           } else {
             nextVariants.push(v)
@@ -230,7 +264,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
         setBaseline(nextVariants)
         setVariants(nextVariants)
-        setPendingDeleteIds([])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al guardar tallas e inventario')
         throw err
@@ -327,11 +360,17 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                 <td>
                   <div className="variant-stock-cell">
                     <NumberField
-                      key={v.id}
+                      // Keyed on the SAVED stock (baseline), not the live one
+                      // — reseeds the field after a save/"Deshacer" changes
+                      // it externally, without remounting (and losing focus)
+                      // on every keystroke, which keying on the live value
+                      // would do.
+                      key={`${v.id}-${baseline.find((b) => b.id === v.id)?.stock}`}
                       min={0}
                       value={v.stock}
                       className="stock-input"
                       onValueChange={(n) => updateVariantField(v.id, 'stock', n)}
+                      onBlur={() => handleStockBlur(v.id)}
                       // type="number" inputs don't support .select() in
                       // Chrome (selectionStart/End are always null on them) —
                       // clearing the value outright is what actually lets a
@@ -351,7 +390,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                   </div>
                 </td>
                 <td>
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleDelete(v.id)}>
+                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleDelete(v)}>
                     Eliminar
                   </button>
                 </td>

@@ -3351,6 +3351,7 @@ img {
 
 .pos-payment-method__row {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -4741,6 +4742,11 @@ img {
 
 .toast__message {
   flex: 1;
+  /* Flex items default to min-width: auto (their own content's width) —
+     without this, a longer message refused to shrink/wrap below that,
+     pushing the action/close buttons after it wider than the toast and
+     off the edge of the screen on mobile. */
+  min-width: 0;
   font-size: 16px;
   line-height: 1.45;
 }

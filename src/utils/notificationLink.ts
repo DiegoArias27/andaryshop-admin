@@ -8,6 +8,9 @@ import type { AppNotification } from '../api/types'
 export function notificationLink(n: AppNotification): string | null {
   if (n.type === 'cash_cut') return '/cortes'
   if (n.type === 'whatsapp_order') return '/pedidos?status=pending&source=whatsapp'
-  if (n.product_id != null) return `/productos/${n.product_id}`
+  // #variantes scrolls straight to Tallas e Inventario (see
+  // ProductEditor.tsx) — a stock alert is always about a specific size/
+  // color's count, never the product's basic info.
+  if (n.product_id != null) return `/productos/${n.product_id}#variantes`
   return null
 }
