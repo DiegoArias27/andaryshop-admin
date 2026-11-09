@@ -4911,8 +4911,17 @@ img {
 }
 
 .image-viewer-overlay img {
+  /* width/height: 100% + object-fit: contain instead of relying on the
+     photo's own intrinsic size capped by max-width/height — a modestly
+     sized source photo (common from a phone-uploaded gallery shot, or a
+     thumb_url) was never being blown UP to fill the available space, only
+     ever shrunk down when too big. On a roomy desktop window that often
+     still read as "big enough"; on a phone screen it visibly didn't. */
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
+  object-fit: contain;
   border-radius: 10px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   cursor: default;
@@ -4958,6 +4967,11 @@ img {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  /* Fills the overlay's own padded area (instead of shrinking to fit
+     whatever size the photo+thumbs happen to need) so .image-lightbox__main
+     below has real room to stretch the photo into — see its own comment. */
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
 }
@@ -4969,8 +4983,13 @@ img {
   justify-content: center;
   min-width: 0;
   min-height: 0;
+  width: 100%;
   max-width: 100%;
   max-height: 100%;
+  /* Takes whatever height the thumbs row (a fixed-height sibling) doesn't
+     need — the photo itself then fills this via width/height: 100% +
+     object-fit: contain (see .image-viewer-overlay img). */
+  flex: 1 1 auto;
 }
 
 .image-lightbox__thumbs {
