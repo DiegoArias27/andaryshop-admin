@@ -607,13 +607,24 @@ function SectionCard({
 
   return (
     <div className="card">
-      <div className="editable-card__header">
-        <button type="button" className="collapsible-card__toggle" onClick={() => setOpen((v) => !v)}>
+      <div
+        className="editable-card__header collapsible-card__toggle"
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((v) => !v)
+          }
+        }}
+      >
+        <span className="collapsible-card__toggle-label">
           <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
           <h2>{title}</h2>
-        </button>
+        </span>
         {dirty && (
-          <div className="variants-editor__edit-actions">
+          <div className="variants-editor__edit-actions" onClick={(e) => e.stopPropagation()}>
             <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
             <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel} disabled={saving}>
               Cancelar

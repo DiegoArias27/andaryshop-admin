@@ -2185,24 +2185,31 @@ img {
   margin-bottom: 8px;
 }
 
-/* The collapsible header's clickable area (title + chevron) — separate
-   from the Guardar/Cancelar actions beside it so clicking those never
-   also toggles the section (no nested <button>s, no stopPropagation
-   needed). */
+/* The WHOLE header row toggles the section now (not just a narrow title+
+   chevron button) — tap anywhere across it, not just precisely on the
+   text/icon. The Guardar/Cancelar actions beside it stop their own clicks
+   from bubbling up to this (see their onClick in ProductEditor.tsx/
+   VariantsEditor.tsx/GalleryManager.tsx), so those still work normally. */
 .collapsible-card__toggle {
+  cursor: pointer;
+  border-radius: 10px;
+  margin: -8px -8px 0;
+  padding: 8px 8px 8px;
+  transition: background 0.1s ease;
+}
+
+.collapsible-card__toggle:hover {
+  background: var(--gray-50);
+}
+
+.collapsible-card__toggle-label {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  text-align: left;
   min-width: 0;
 }
 
-.collapsible-card__toggle h2 {
+.collapsible-card__toggle-label h2 {
   margin: 0;
 }
 

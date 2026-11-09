@@ -281,11 +281,22 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
   return (
     <div className="variants-editor-body">
-      <div className="variants-editor__header">
-        <button type="button" className="collapsible-card__toggle" onClick={() => setOpen((v) => !v)}>
+      <div
+        className="variants-editor__header collapsible-card__toggle"
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((v) => !v)
+          }
+        }}
+      >
+        <span className="collapsible-card__toggle-label">
           <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
           <h2>Tallas e Inventario</h2>
-        </button>
+        </span>
         {dirty && <span className="variants-editor__dirty-hint">Cambios sin guardar</span>}
       </div>
 

@@ -63,7 +63,11 @@ export default function NotificationsBell() {
     function handleClickOutside(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
     }
-    function handleScroll() {
+    function handleScroll(e: Event) {
+      // Scrolling the notification list itself (it can scroll internally
+      // once there are several rows) used to close the panel too — only
+      // the page/something outside it moving should.
+      if (wrapRef.current && wrapRef.current.contains(e.target as Node)) return
       setOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
