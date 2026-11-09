@@ -2294,6 +2294,12 @@ img {
   color: var(--red);
 }
 
+.variants-editor__empty-hint {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--amber);
+}
+
 
 .editable-card__header {
   display: flex;

@@ -69,9 +69,11 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   const confirm = useConfirm()
   // Closed by default (less to scroll past) — opens itself when a low-
   // stock notification deep-links straight here (see ProductEditor.tsx's
-  // #variantes scroll effect).
+  // #variantes scroll effect), or when there's nothing here yet: right
+  // after creating a product this is empty and unmissable instead of
+  // hidden behind a collapsed accordion a new admin has no reason to open.
   const location = useLocation()
-  const [open, setOpen] = useState(() => location.hash === '#variantes')
+  const [open, setOpen] = useState(() => location.hash === '#variantes' || initialVariants.length === 0)
 
   // Suggests a barcode as soon as talla+color are both filled — same
   // product, same base, only the size/color suffix changes — without
@@ -297,7 +299,11 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
           <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
           <h2>Tallas e Inventario</h2>
         </span>
-        {dirty && <span className="variants-editor__dirty-hint">Cambios sin guardar</span>}
+        {variants.length === 0 ? (
+          <span className="variants-editor__empty-hint">Sin tallas aún</span>
+        ) : (
+          dirty && <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
+        )}
       </div>
 
       {open && (

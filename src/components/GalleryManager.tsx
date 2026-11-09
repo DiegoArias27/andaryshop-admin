@@ -30,9 +30,11 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
   const touchStartXRef = useRef<number | null>(null)
   const confirm = useConfirm()
   const { toast } = useToast()
-  // Closed by default (less to scroll past) — reordering is the only
-  // "dirty" state here, so that's what forces it back open.
-  const [open, setOpen] = useState(false)
+  // Closed by default (less to scroll past) — reordering forces it back
+  // open, and so does having zero photos yet: right after creating a
+  // product this is empty, and a new admin has no reason to open a
+  // collapsed, unlabeled "Imágenes" card to discover that.
+  const [open, setOpen] = useState(() => images.length === 0)
 
   useEffect(() => {
     setOrderIds(images.map((img) => img.id))
@@ -238,16 +240,20 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
           <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
           <h2>Imágenes</h2>
         </span>
-        {orderChanged && (
-          <div className="variants-editor__edit-actions" onClick={(e) => e.stopPropagation()}>
-            <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
-            <button type="button" className="btn btn--ghost btn--sm" onClick={handleCancelOrder} disabled={reordering}>
-              Cancelar
-            </button>
-            <button type="button" className="btn btn--accent btn--sm" onClick={handleSaveOrder} disabled={reordering}>
-              {reordering ? 'Guardando…' : 'Guardar orden'}
-            </button>
-          </div>
+        {images.length === 0 ? (
+          <span className="variants-editor__empty-hint">Sin fotos aún</span>
+        ) : (
+          orderChanged && (
+            <div className="variants-editor__edit-actions" onClick={(e) => e.stopPropagation()}>
+              <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
+              <button type="button" className="btn btn--ghost btn--sm" onClick={handleCancelOrder} disabled={reordering}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn--accent btn--sm" onClick={handleSaveOrder} disabled={reordering}>
+                {reordering ? 'Guardando…' : 'Guardar orden'}
+              </button>
+            </div>
+          )
         )}
       </div>
 

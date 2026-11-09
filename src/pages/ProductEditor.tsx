@@ -20,7 +20,11 @@ const emptyForm = {
   mainImageUrl: null as string | null,
   isNew: false,
   isFeatured: false,
-  isActive: true,
+  // Starts hidden, matching the "Borrador" badge shown while creating —
+  // without this a brand-new product (no sizes, no photos yet) is live in
+  // the storefront the instant it's created. The admin turns it on from
+  // Visibilidad once it's actually ready to sell.
+  isActive: false,
   discountType: '' as '' | DiscountType,
   discountValue: '',
 }
@@ -502,6 +506,7 @@ export default function ProductEditor() {
           {!isNewProduct && (
             <SectionCard
               title="Visibilidad"
+              badge={!form.isActive && <span className="variants-editor__empty-hint">Oculto en tienda</span>}
               dirty={isSectionDirty('visibility')}
               saving={savingSection === 'visibility'}
               error={sectionErrors.visibility}
@@ -584,6 +589,7 @@ export default function ProductEditor() {
 function SectionCard({
   title,
   hint,
+  badge,
   dirty,
   saving,
   error,
@@ -593,6 +599,7 @@ function SectionCard({
 }: {
   title: string
   hint?: string | false
+  badge?: ReactNode
   dirty: boolean
   saving: boolean
   error?: string
@@ -623,7 +630,7 @@ function SectionCard({
           <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
           <h2>{title}</h2>
         </span>
-        {dirty && (
+        {dirty ? (
           <div className="variants-editor__edit-actions" onClick={(e) => e.stopPropagation()}>
             <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
             <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel} disabled={saving}>
@@ -633,6 +640,8 @@ function SectionCard({
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
           </div>
+        ) : (
+          badge
         )}
       </div>
       {open && (
