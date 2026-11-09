@@ -3215,6 +3215,10 @@ img {
   flex-shrink: 0;
 }
 
+.pos-add-confirm--error {
+  color: var(--red);
+}
+
 .pos-restock__row {
   display: flex;
   gap: 8px;

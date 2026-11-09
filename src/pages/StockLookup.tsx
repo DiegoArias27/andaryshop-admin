@@ -1178,6 +1178,8 @@ export default function StockLookup() {
                       </Link>
                     </div>
                   </>
+                ) : result.stock <= 0 ? (
+                  <p className="pos-add-confirm pos-add-confirm--error">Sin stock disponible — no se agregó a la venta</p>
                 ) : (
                   <p className="pos-add-confirm">
                     <CartIcon width={14} height={14} /> Agregado a la venta actual
