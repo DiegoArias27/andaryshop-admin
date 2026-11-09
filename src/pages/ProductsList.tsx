@@ -419,7 +419,14 @@ export default function ProductsList() {
                       <Link to={`/productos/${p.id}`} className="admin-table__name" onClick={(e: ReactMouseEvent) => e.stopPropagation()}>
                         {p.name}
                       </Link>
-                      <div className="admin-table__badges" onClick={(e) => e.stopPropagation()}>
+                      {/* No stopPropagation here on purpose — this div (and
+                          the plain, non-interactive tag spans inside it)
+                          used to swallow every click below the name with
+                          nothing to actually do with it, since the row's
+                          own onClick never got the chance to fire. Only
+                          CollectionTag's own real link/button needs its
+                          clicks isolated (handled inside it). */}
+                      <div className="admin-table__badges">
                         {!!p.is_new && <span className="tag">Nuevo</span>}
                         {!!p.is_bestseller && <span className="tag">Más vendido</span>}
                         {priceInfo.type === 'discount' && <span className="tag tag--discount">Descuento</span>}
@@ -524,7 +531,11 @@ function CollectionTag({ collections }: { collections: ProductCollectionMembersh
 
   if (collections.length === 1) {
     return (
-      <Link to={`/colecciones#collection-${collections[0].id}`} className="tag tag--collection tag--collection-link">
+      <Link
+        to={`/colecciones#collection-${collections[0].id}`}
+        className="tag tag--collection tag--collection-link"
+        onClick={(e) => e.stopPropagation()}
+      >
         {collections[0].name}
       </Link>
     )
