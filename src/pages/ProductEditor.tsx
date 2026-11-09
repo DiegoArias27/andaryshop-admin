@@ -9,7 +9,7 @@ import { getProductPriceInfo } from '../utils/discount'
 import { formatPrice } from '../utils/currency'
 import { useToast } from '../hooks/useToast'
 import FormSkeleton from '../components/FormSkeleton'
-import { BackIcon } from '../components/icons'
+import { BackIcon, ChevronRightIcon } from '../components/icons'
 
 const emptyForm = {
   name: '',
@@ -578,7 +578,9 @@ export default function ProductEditor() {
 }
 
 /** A card whose fields are always editable — no more "activar edición" gate.
- * Its own Guardar/Cancelar bar only appears once `dirty` is true. */
+ * Its own Guardar/Cancelar bar only appears once `dirty` is true. Starts
+ * collapsed (less to scroll past across 5 of these) and reopens itself the
+ * moment it actually has unsaved changes to show. */
 function SectionCard({
   title,
   hint,
@@ -598,10 +600,18 @@ function SectionCard({
   onSave: () => void
   children: ReactNode
 }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (dirty) setOpen(true)
+  }, [dirty])
+
   return (
     <div className="card">
       <div className="editable-card__header">
-        <h2>{title}</h2>
+        <button type="button" className="collapsible-card__toggle" onClick={() => setOpen((v) => !v)}>
+          <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
+          <h2>{title}</h2>
+        </button>
         {dirty && (
           <div className="variants-editor__edit-actions">
             <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
@@ -614,9 +624,13 @@ function SectionCard({
           </div>
         )}
       </div>
-      {hint && <p className="page-block__hint">{hint}</p>}
-      {children}
-      {error && <p className="form-error">{error}</p>}
+      {open && (
+        <>
+          {hint && <p className="page-block__hint">{hint}</p>}
+          {children}
+          {error && <p className="form-error">{error}</p>}
+        </>
+      )}
     </div>
   )
 }

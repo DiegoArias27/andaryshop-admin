@@ -1,7 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useState, type DragEvent, type FormEvent } from 'react'
+import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ProductVariant } from '../api/types'
-import { CopyIcon, DragHandleIcon } from './icons'
+import { ChevronRightIcon, CopyIcon, DragHandleIcon } from './icons'
 import { useToast } from '../hooks/useToast'
 import { useConfirm } from '../hooks/useConfirm'
 import NumberField from './NumberField'
@@ -66,6 +67,11 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const confirm = useConfirm()
+  // Closed by default (less to scroll past) — opens itself when a low-
+  // stock notification deep-links straight here (see ProductEditor.tsx's
+  // #variantes scroll effect).
+  const location = useLocation()
+  const [open, setOpen] = useState(() => location.hash === '#variantes')
 
   // Suggests a barcode as soon as talla+color are both filled — same
   // product, same base, only the size/color suffix changes — without
@@ -106,6 +112,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
   useEffect(() => {
     onDirtyChange?.(dirty)
+    if (dirty) setOpen(true)
   }, [dirty, onDirtyChange])
 
   useEffect(() => {
@@ -275,10 +282,15 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   return (
     <div className="variants-editor-body">
       <div className="variants-editor__header">
-        <h2>Tallas e Inventario</h2>
+        <button type="button" className="collapsible-card__toggle" onClick={() => setOpen((v) => !v)}>
+          <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
+          <h2>Tallas e Inventario</h2>
+        </button>
         {dirty && <span className="variants-editor__dirty-hint">Cambios sin guardar</span>}
       </div>
 
+      {open && (
+      <>
       <div className="editable-card__content">
         <p className="page-block__hint table-wrap__scroll-hint">👉 Desliza la tabla hacia los lados para ver todas las columnas.</p>
         <div className="table-wrap">
@@ -450,6 +462,8 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
       </form>
 
       {error && <p className="form-error">{error}</p>}
+      </>
+      )}
     </div>
   )
 })

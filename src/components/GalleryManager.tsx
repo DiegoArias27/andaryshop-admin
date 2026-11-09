@@ -30,6 +30,9 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
   const touchStartXRef = useRef<number | null>(null)
   const confirm = useConfirm()
   const { toast } = useToast()
+  // Closed by default (less to scroll past) — reordering is the only
+  // "dirty" state here, so that's what forces it back open.
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     setOrderIds(images.map((img) => img.id))
@@ -74,6 +77,10 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
   const imageById = new Map(images.map((img) => [img.id, img]))
   const baselineIds = images.map((img) => img.id)
   const orderChanged = orderIds.join(',') !== baselineIds.join(',')
+
+  useEffect(() => {
+    if (orderChanged) setOpen(true)
+  }, [orderChanged])
 
   const visibleOrder = orderIds.map((id) => imageById.get(id)).filter((img): img is ProductImage => !!img)
 
@@ -216,7 +223,10 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
   return (
     <>
       <div className="editable-card__header">
-        <h2>Imágenes</h2>
+        <button type="button" className="collapsible-card__toggle" onClick={() => setOpen((v) => !v)}>
+          <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
+          <h2>Imágenes</h2>
+        </button>
         {orderChanged && (
           <div className="variants-editor__edit-actions">
             <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
@@ -230,6 +240,8 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
         )}
       </div>
 
+      {open && (
+      <>
       <p className="page-block__hint">
         Arrastra para reordenar, o toca la estrella para hacer principal esa foto sin arrastrar — la primera foto
         (marcada "Principal") es la portada del producto en la tienda. También puedes pegar una imagen copiada
@@ -330,6 +342,8 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
           multiple
         />
       </div>
+      </>
+      )}
 
       {viewerIndex !== null &&
         createPortal(
