@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
@@ -29,6 +29,16 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// Forces a full remount when the create screen redirects to the new
+// product's own /productos/:id (or when navigating between two different
+// products) — otherwise React reuses the same ProductEditor instance across
+// that id change, which leaves every section's own open/dirty state (and
+// `loading`) stuck mid-transition instead of starting clean.
+function ProductEditorRoute() {
+  const { id } = useParams()
+  return <ProductEditor key={id ?? 'nuevo'} />
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -42,8 +52,8 @@ function AppRoutes() {
       >
         <Route path="/" element={<Navigate to="/productos" replace />} />
         <Route path="/productos" element={<ProductsList />} />
-        <Route path="/productos/nuevo" element={<ProductEditor />} />
-        <Route path="/productos/:id" element={<ProductEditor />} />
+        <Route path="/productos/nuevo" element={<ProductEditorRoute />} />
+        <Route path="/productos/:id" element={<ProductEditorRoute />} />
         <Route path="/categorias" element={<Categories />} />
         <Route path="/marcas" element={<Brands />} />
         <Route path="/colecciones" element={<Collections />} />
