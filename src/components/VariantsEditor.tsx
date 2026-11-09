@@ -11,6 +11,12 @@ interface VariantsEditorProps {
   /** Fires whenever there are unsaved changes to commit/cancel — lets the
    * parent show its own Guardar/Cancelar bar for this section. */
   onDirtyChange?: (dirty: boolean) => void
+  /** Fires with the actually-saved variant list whenever it changes (a new
+   * one added, an undo, or a batch commit) — same idea as GalleryManager's
+   * onCommitted. Lets the parent keep its own color list (used to tag
+   * photos by color) in sync instead of it staying frozen at whatever
+   * variants existed when the page first loaded. */
+  onVariantsChange?: (variants: ProductVariant[]) => void
 }
 
 export interface VariantsEditorHandle {
@@ -48,7 +54,7 @@ function suggestBarcode(productId: number, size: string, colorName: string, take
 }
 
 const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(function VariantsEditor(
-  { productId, initialVariants, onDirtyChange },
+  { productId, initialVariants, onDirtyChange, onVariantsChange },
   ref
 ) {
   const [baseline, setBaseline] = useState<ProductVariant[]>(initialVariants)
@@ -102,6 +108,10 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   useEffect(() => {
     onDirtyChange?.(dirty)
   }, [dirty, onDirtyChange])
+
+  useEffect(() => {
+    onVariantsChange?.(baseline)
+  }, [baseline, onVariantsChange])
 
   // Adding a variant saves immediately instead of joining the dirty/"Guardar
   // tallas e inventario" batch like editing an existing row still does — it

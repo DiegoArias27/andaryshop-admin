@@ -73,6 +73,12 @@ export default function ProductEditor() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [savedForm, setSavedForm] = useState<FormState>(emptyForm)
   const [images, setImages] = useState<ProductImage[]>([])
+  // Kept separate from product.variants (which only ever reflects what the
+  // page loaded with) and updated live via VariantsEditor's onVariantsChange
+  // — same reasoning as `images` above/GalleryManager's onCommitted, just
+  // for colors: without this, a color added after the page loaded never
+  // showed up as a taggable option on a photo until a full reload.
+  const [variants, setVariants] = useState<Product['variants']>([])
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(!isNewProduct)
   const [saving, setSaving] = useState(false)
@@ -123,6 +129,7 @@ export default function ProductEditor() {
         setForm(loaded)
         setSavedForm(loaded)
         setImages(data.images)
+        setVariants(data.variants)
         setLoading(false)
       })
       .catch((err) => {
@@ -138,9 +145,9 @@ export default function ProductEditor() {
 
   const productColors = useMemo(() => {
     const seen = new Set<string>()
-    ;(product?.variants ?? []).forEach((v) => seen.add(v.color_name))
+    variants.forEach((v) => seen.add(v.color_name))
     return [...seen]
-  }, [product])
+  }, [variants])
 
   const priceInfo = product ? getProductPriceInfo(product) : null
   const lockedByCollection = priceInfo?.type === 'discount' && priceInfo.collectionName !== null
@@ -503,8 +510,9 @@ export default function ProductEditor() {
               <VariantsEditor
                 ref={variantsRef}
                 productId={product.id}
-                initialVariants={product.variants}
+                initialVariants={variants}
                 onDirtyChange={setVariantsEditing}
+                onVariantsChange={setVariants}
               />
             </div>
           )}
