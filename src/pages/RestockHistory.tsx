@@ -127,7 +127,7 @@ export default function RestockHistory() {
             <tbody>
               {rows.map((m) => (
                 <tr key={m.id}>
-                  <td>
+                  <td className="admin-table__cell--media">
                     {m.main_image_url ? (
                       <button
                         type="button"
@@ -141,14 +141,14 @@ export default function RestockHistory() {
                       <div className="admin-table__thumb admin-table__thumb--empty" />
                     )}
                   </td>
-                  <td>{m.product_name}</td>
-                  <td>
+                  <td className="admin-table__cell--title">{m.product_name}</td>
+                  <td data-label="Talla / Color">
                     {m.size} · {m.color_name}
                   </td>
-                  <td>+{m.delta}</td>
-                  <td>{m.resulting_stock}</td>
-                  <td>{m.admin_email ?? '—'}</td>
-                  <td>{new Date(m.created_at).toLocaleString('es-MX')}</td>
+                  <td data-label="Cantidad">+{m.delta}</td>
+                  <td data-label="Stock resultante">{m.resulting_stock}</td>
+                  <td data-label="Quién">{m.admin_email ?? '—'}</td>
+                  <td data-label="Cuándo">{new Date(m.created_at).toLocaleString('es-MX')}</td>
                 </tr>
               ))}
             </tbody>

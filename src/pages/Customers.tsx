@@ -31,22 +31,22 @@ function CustomerRow({ customer, onSaved }: { customer: Customer; onSaved: (c: C
 
   return (
     <tr>
-      <td>
+      <td className="admin-table__cell--title">
         {editing ? (
           <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: 160 }} />
         ) : (
           customer.name
         )}
       </td>
-      <td>{customer.email ?? '—'}</td>
-      <td>
+      <td data-label="Correo">{customer.email ?? '—'}</td>
+      <td data-label="Teléfono">
         {editing ? (
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Opcional" style={{ width: 130 }} />
         ) : (
           customer.phone ?? '—'
         )}
       </td>
-      <td>
+      <td data-label="Descuento">
         {editing ? (
           <input
             type="number" inputMode="decimal"
@@ -62,8 +62,8 @@ function CustomerRow({ customer, onSaved }: { customer: Customer; onSaved: (c: C
           <span className="page-block__hint">Sin descuento</span>
         )}
       </td>
-      <td>{new Date(customer.created_at).toLocaleDateString('es-MX')}</td>
-      <td>
+      <td data-label="Desde">{new Date(customer.created_at).toLocaleDateString('es-MX')}</td>
+      <td className="admin-table__actions">
         {editing ? (
           <>
             <button type="button" className="btn btn--ghost btn--sm" onClick={() => setEditing(false)} disabled={saving}>

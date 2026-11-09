@@ -303,7 +303,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
       {open && (
       <>
       <div className="editable-card__content">
-        <p className="page-block__hint table-wrap__scroll-hint">👉 Desliza la tabla hacia los lados para ver todas las columnas.</p>
         <div className="table-wrap">
           <table className="admin-table">
           <thead>
@@ -329,7 +328,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                   .join(' ')}
                 onDragOver={(e) => handleDragOver(e, index)}
               >
-                <td>
+                <td className="admin-table__cell--media">
                   <span
                     className="image-thumbs__handle"
                     draggable
@@ -339,14 +338,14 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                     <DragHandleIcon />
                   </span>
                 </td>
-                <td>
+                <td data-label="Talla">
                   <input
                     value={v.size}
                     className="variant-input variant-input--size"
                     onChange={(e) => updateVariantField(v.id, 'size', e.target.value)}
                   />
                 </td>
-                <td>
+                <td data-label="Color">
                   <div className="variant-color-field">
                     <input
                       type="color"
@@ -361,7 +360,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                     />
                   </div>
                 </td>
-                <td>
+                <td data-label="Código de barras">
                   <div className="variant-barcode-cell">
                     <input
                       value={v.barcode}
@@ -380,7 +379,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                     </button>
                   </div>
                 </td>
-                <td>
+                <td data-label="Stock">
                   <div className="variant-stock-cell">
                     <NumberField
                       // Keyed on the SAVED stock (baseline), not the live one
@@ -412,7 +411,7 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                     )}
                   </div>
                 </td>
-                <td>
+                <td className="admin-table__actions">
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleDelete(v)}>
                     Eliminar
                   </button>

@@ -385,7 +385,7 @@ export default function ProductsList() {
                     className="admin-table__row--clickable"
                     onClick={() => navigate(`/productos/${p.id}`)}
                   >
-                    <td>
+                    <td className="admin-table__cell--select">
                       <button
                         type="button"
                         className="icon-btn"
@@ -398,7 +398,7 @@ export default function ProductsList() {
                         {selectedIds.includes(p.id) ? <CheckSquareIcon /> : <SquareIcon />}
                       </button>
                     </td>
-                    <td>
+                    <td className="admin-table__cell--media">
                       {p.main_image_url ? (
                         <button
                           type="button"
@@ -415,7 +415,7 @@ export default function ProductsList() {
                         <div className="admin-table__thumb admin-table__thumb--empty" />
                       )}
                     </td>
-                    <td>
+                    <td className="admin-table__cell--title">
                       <Link to={`/productos/${p.id}`} className="admin-table__name" onClick={(e: ReactMouseEvent) => e.stopPropagation()}>
                         {p.name}
                       </Link>
@@ -433,8 +433,8 @@ export default function ProductsList() {
                         {p.collections.length > 0 && <CollectionTag collections={p.collections} />}
                       </div>
                     </td>
-                    <td>{p.category_name ?? '—'}</td>
-                    <td>
+                    <td data-label="Categoría">{p.category_name ?? '—'}</td>
+                    <td data-label="Precio">
                       {priceInfo.type === 'discount' ? (
                         <>
                           <span className="admin-table__price-discounted">{formatPrice(priceInfo.price)}</span>
@@ -444,8 +444,8 @@ export default function ProductsList() {
                         formatPrice(p.price)
                       )}
                     </td>
-                    <td>{totalStock}</td>
-                    <td>
+                    <td data-label="Stock total">{totalStock}</td>
+                    <td data-label="Estado">
                       {totalStock === 0 ? (
                         <span className="tag tag--outofstock">Agotado</span>
                       ) : (

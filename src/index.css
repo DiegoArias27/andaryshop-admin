@@ -1142,6 +1142,139 @@ img {
   border-bottom: none;
 }
 
+/* Below this width every .admin-table (Productos, Ventas, Clientes,
+   Colecciones, Mayoreo, Reabastecimientos, Tallas e Inventario) turns into
+   a stack of cards — one per row — instead of a table needing a sideways
+   swipe to see the rest of its columns. Each <td> shows its own column
+   header as a label (from its data-label attribute, which every .tsx file
+   using .admin-table sets to match its own <th> text) instead of relying
+   on a <thead> column position that no longer exists once everything's
+   stacked vertically. A handful of cells (checkbox, thumbnail, actions —
+   marked with the classes below) don't fit that "label: value" shape, so
+   they opt out of the label row and lay out across the top/bottom of the
+   card instead. */
+@media (max-width: 760px) {
+  .table-wrap {
+    overflow-x: visible;
+    background: none;
+    border: none;
+    border-radius: 0;
+  }
+
+  .admin-table {
+    min-width: 0;
+    width: 100%;
+    display: block;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-table tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 4px 16px;
+  }
+
+  .admin-table tr.admin-table__row--clickable {
+    cursor: pointer;
+  }
+
+  .admin-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gray-100);
+    white-space: normal;
+    text-align: right;
+  }
+
+  /* Overrides the desktop-only "last row has no cell borders" rule — in
+     card mode every row is its own card, so every one (not just the last)
+     needs its own per-field separators, up to its own last field. */
+  .admin-table tr:last-child td {
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    text-align: left;
+  }
+
+  /* Checkbox/thumbnail/actions cells: no single "value" worth a label —
+     each gets its own layout instead (see admin-table__cell--* below). */
+  .admin-table td:not([data-label]) {
+    justify-content: center;
+    padding: 6px 0;
+    border-bottom: none;
+  }
+
+  /* The card's main identifier (product name, customer, sale #…) — a
+     prominent heading instead of just another right-aligned "label: value"
+     row, since it's what the card is actually titled by. */
+  .admin-table__cell--title {
+    order: -1;
+    display: block !important;
+    text-align: left !important;
+    font-size: 17px;
+    font-weight: 700;
+    padding: 12px 0 10px !important;
+    border-bottom: 1px solid var(--gray-100) !important;
+  }
+
+  .admin-table__cell--title::before {
+    content: none !important;
+  }
+
+  /* Checkbox + thumbnail sit side by side as the card's own small header,
+     above the labeled fields — pulled out of the normal stacked flow via
+     order instead of being just another stacked row. */
+  .admin-table__cell--select,
+  .admin-table__cell--media {
+    order: -2;
+    justify-content: flex-start !important;
+    padding-top: 12px !important;
+  }
+
+  .admin-table__cell--select {
+    order: -3;
+    flex: 0 0 auto;
+    padding-right: 0 !important;
+  }
+
+  /* Editar/Eliminar-style action buttons (.admin-table__actions, already
+     used for this) sit in their own full row at the bottom of the card. */
+  .admin-table__actions {
+    order: 999;
+    justify-content: flex-end !important;
+    flex-wrap: wrap;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+}
+
 .admin-table__row--clickable {
   cursor: pointer;
 }
@@ -2161,20 +2294,6 @@ img {
   color: var(--red);
 }
 
-/* The table itself already scrolls sideways (table-wrap's own overflow-x:
-   auto) — nothing about a plain table signals that on its own, so without
-   this an admin on a narrow screen has no way to know there's more to the
-   right (Stock, the remove button) than what's visible. Only shown where
-   the table actually doesn't fit — past 900px it does. */
-.table-wrap__scroll-hint {
-  display: block;
-}
-
-@media (min-width: 900px) {
-  .table-wrap__scroll-hint {
-    display: none;
-  }
-}
 
 .editable-card__header {
   display: flex;

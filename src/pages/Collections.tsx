@@ -1416,7 +1416,7 @@ function AssignedProducts({
         <tbody>
           {visibleOrder.map((p, index) => (
             <tr key={p.id} className={dragIndex === index ? 'assigned-products-table__row--dragging' : ''} onDragOver={(e) => handleDragOver(e, index)}>
-              <td>
+              <td className="admin-table__cell--select">
                 <button
                   type="button"
                   className="icon-btn icon-btn--ghost"
@@ -1426,12 +1426,12 @@ function AssignedProducts({
                   {selectedIds.has(p.id) ? <CheckSquareIcon /> : <SquareIcon />}
                 </button>
               </td>
-              <td>
+              <td className="admin-table__cell--media">
                 <span className="image-thumbs__handle" draggable onDragStart={() => setDragIndex(index)} onDragEnd={handleDragEnd}>
                   <DragHandleIcon />
                 </span>
               </td>
-              <td>
+              <td className="admin-table__cell--media">
                 {p.main_image_url ? (
                   <button
                     type="button"
@@ -1445,9 +1445,9 @@ function AssignedProducts({
                   <div className="admin-table__thumb admin-table__thumb--empty" />
                 )}
               </td>
-              <td>{p.name}</td>
-              <td>{formatPrice(p.price)}</td>
-              <td>
+              <td className="admin-table__cell--title">{p.name}</td>
+              <td data-label="Precio normal">{formatPrice(p.price)}</td>
+              <td data-label="Precio en esta colección">
                 <DiscountCell
                   product={p}
                   collection={collection}
@@ -1456,7 +1456,7 @@ function AssignedProducts({
                   onUpdate={(price) => onUpdateDiscount(p.id, price)}
                 />
               </td>
-              <td>
+              <td className="admin-table__actions">
                 <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleRemove(p)}>
                   Quitar
                 </button>

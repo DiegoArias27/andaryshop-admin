@@ -182,11 +182,11 @@ export default function Wholesale() {
                   <tbody>
                     {groupTiers.map((t) => (
                       <tr key={t.id}>
-                        <td>{t.min_qty}</td>
-                        <td>{t.max_qty ?? 'Sin límite'}</td>
-                        <td>{formatPrice(t.price_per_unit)}</td>
-                        <td>{!!t.is_featured ? '★ Más elegido' : 'Automático'}</td>
-                        <td>
+                        <td data-label="Cantidad mínima">{t.min_qty}</td>
+                        <td data-label="Cantidad máxima">{t.max_qty ?? 'Sin límite'}</td>
+                        <td data-label="Precio por unidad">{formatPrice(t.price_per_unit)}</td>
+                        <td data-label="Más elegido">{!!t.is_featured ? '★ Más elegido' : 'Automático'}</td>
+                        <td className="admin-table__actions">
                           <button type="button" className="btn btn--ghost btn--sm" onClick={() => startEdit(t)}>
                             Editar
                           </button>

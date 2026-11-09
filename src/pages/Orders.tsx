@@ -241,9 +241,9 @@ function StatTable({ view, rows, onClose }: { view: StatView; rows: StatTableRow
                   className={canExpand ? 'sales-stats__table-row--clickable' : ''}
                   onClick={canExpand ? () => setExpandedKey((k) => (k === row.key ? null : row.key)) : undefined}
                 >
-                  <td>{row.label}</td>
-                  <td>{row.quantity}</td>
-                  <td>{row.gifts ?? '—'}</td>
+                  <td data-label={firstColumnLabel} className="admin-table__cell--title">{row.label}</td>
+                  <td data-label="Vendidos">{row.quantity}</td>
+                  <td data-label="Regalos">{row.gifts ?? '—'}</td>
                   {hasDrilldown && (
                     <td>
                       {canExpand && (
@@ -825,7 +825,7 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
               <tbody>
                 {draftItems.map((item, idx) => (
                   <tr key={idx}>
-                    <td>
+                    <td className="admin-table__cell--media">
                       {item.mainImageUrl ? (
                         <button
                           type="button"
@@ -839,13 +839,13 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                         <div className="admin-table__thumb admin-table__thumb--empty" />
                       )}
                     </td>
-                    <td>
+                    <td className="admin-table__cell--title">
                       {item.productName}
                       {item.size && ` — ${item.size}`}
                       {item.colorName && `, ${item.colorName}`}
                     </td>
-                    <td>{formatPrice(item.unitPrice)}</td>
-                    <td>
+                    <td data-label="Precio">{formatPrice(item.unitPrice)}</td>
+                    <td data-label="Cant.">
                       <NumberField
                         key={idx}
                         min={1}
@@ -854,7 +854,7 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                         style={{ width: 60 }}
                       />
                     </td>
-                    <td>
+                    <td data-label="Descuento (por unidad)">
                       <NumberField
                         key={idx}
                         min={0}
@@ -866,14 +866,14 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                       />
                       {item.discountReason && <p className="page-block__hint">{item.discountReason}</p>}
                     </td>
-                    <td>
+                    <td data-label="Regalo">
                       <input
                         type="checkbox"
                         checked={!!item.isGift}
                         onChange={(e) => updateDraftItem(idx, { isGift: e.target.checked })}
                       />
                     </td>
-                    <td>
+                    <td className="admin-table__actions">
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeDraftItem(idx)}>
                         Quitar
                       </button>
