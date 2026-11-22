@@ -42,6 +42,7 @@ import type {
   WholesaleTierInput,
   NotificationsResponse,
 } from './types'
+import { shrinkImageIfNeeded } from '../utils/imageResize'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const TOKEN_KEY = 'andary-admin-token'
@@ -220,9 +221,9 @@ export const api = {
     return request<RestockHistoryResponse>(`/variants/restocks${query ? `?${query}` : ''}`)
   },
 
-  uploadImage: (file: File) => {
+  uploadImage: async (file: File) => {
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('image', await shrinkImageIfNeeded(file))
     return request<{ url: string; thumbUrl: string; key: string }>('/uploads', { method: 'POST', body: formData })
   },
   getMediaLibrary: () => request<MediaItem[]>('/uploads'),

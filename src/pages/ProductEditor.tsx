@@ -13,6 +13,40 @@ import { BackIcon, ChevronRightIcon } from '../components/icons'
 
 const LAST_CATEGORY_KEY = 'andary-admin-last-category'
 
+// Category names are plural everywhere they're really a catalog section
+// ("Sudaderas", "Playeras") — fine for nav/filters, but wrong in a product
+// name built from it ("Sudadera Boss", not "Sudaderas Boss"). Handles the
+// common Spanish plural patterns for clothing categories; a handful of
+// invariant words (tenis, lunes…) are listed explicitly since nothing
+// about their spelling alone tells singular from plural.
+const INVARIANT_CATEGORY_WORDS = new Set(['tenis', 'lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes'])
+const STRESSED_N_SUFFIXES: [string, string][] = [
+  ['anes', 'án'],
+  ['enes', 'én'],
+  ['ines', 'ín'],
+  ['ones', 'ón'],
+  ['unes', 'ún'],
+]
+
+function singularizeCategoryName(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return trimmed
+  const lower = trimmed.toLowerCase()
+  if (INVARIANT_CATEGORY_WORDS.has(lower)) return trimmed
+
+  for (const [suffix, replacement] of STRESSED_N_SUFFIXES) {
+    if (lower.endsWith(suffix)) return trimmed.slice(0, -suffix.length) + replacement
+  }
+
+  const lastChar = lower[lower.length - 1]
+  const beforeLast = lower[lower.length - 2] ?? ''
+  if (lastChar === 's' && /[aeiouáéíóú]/.test(beforeLast)) {
+    return trimmed.slice(0, -1)
+  }
+
+  return trimmed
+}
+
 const emptyForm = {
   name: '',
   description: '',
@@ -233,10 +267,20 @@ export default function ProductEditor() {
     }
   }
 
+  // Información Básica has no Guardar/Cancelar bar of its own (see
+  // SectionCard's hideActions below) — each field saves itself on blur
+  // instead, same idea as a variant's stock field. Guards against a no-op
+  // save firing on every single blur regardless of whether anything
+  // actually changed (tabbing through fields without touching them).
+  function saveBasicIfChanged() {
+    if (isNewProduct || !isSectionDirty('basic')) return
+    handleSaveSection('basic')
+  }
+
   function buildAutoName(categoryId: string, brandId: string): string {
     const cat = categories.find((c) => String(c.id) === categoryId)
     const br = brands.find((b) => String(b.id) === brandId)
-    return [cat?.name, br?.name].filter(Boolean).join(' ')
+    return [cat && singularizeCategoryName(cat.name), br?.name].filter(Boolean).join(' ')
   }
 
   // The retail price is almost always just the cheapest (first) wholesale
@@ -297,12 +341,29 @@ export default function ProductEditor() {
   // "Agregar otro producto igual" (bottom of an existing product) lands
   // here with its prefill in router state — creates the duplicate
   // immediately, no extra tap needed, since choosing that button was
-  // already the deliberate action.
+  // already the deliberate action. Absent that, a REMEMBERED category
+  // (see LAST_CATEGORY_KEY) also creates immediately — a week's drop is
+  // almost always one category after another, so requiring a tap on the
+  // same switch every single time was pure friction. The switches below
+  // only matter the very first time, or once the remembered category
+  // stops being the right guess (picking a different one there — or
+  // changing Categoría in Información Básica afterward — updates it).
   useEffect(() => {
     if (!isNewProduct || !refsLoaded) return
     const prefill = (location.state as { prefill?: DuplicatePrefill } | null)?.prefill
-    if (!prefill) return
-    createDraft(prefill)
+    if (prefill) {
+      createDraft(prefill)
+      return
+    }
+    let lastCategoryId: string | null = null
+    try {
+      lastCategoryId = localStorage.getItem(LAST_CATEGORY_KEY)
+    } catch {
+      // ignore
+    }
+    if (lastCategoryId && categories.some((c) => String(c.id) === lastCategoryId)) {
+      createDraft({ categoryId: lastCategoryId })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNewProduct, refsLoaded])
 
@@ -371,25 +432,11 @@ export default function ProductEditor() {
   const basicFields = (
     <div className="form-grid">
       <label className="form-field">
-        Nombre del producto
-        <input
-          value={form.name}
-          onChange={(e) => {
-            setNameManuallyEdited(true)
-            updateField('name', e.target.value)
-          }}
-          placeholder="Ej. Chaqueta Aviador"
-          disabled={savingSection === 'basic'}
-          required
-        />
-        {!nameManuallyEdited && <span className="page-block__hint">Se completa solo con categoría + marca</span>}
-      </label>
-
-      <label className="form-field">
         Marca
         <select
           value={form.brandId}
           onChange={(e) => updateField('brandId', e.target.value)}
+          onBlur={saveBasicIfChanged}
           disabled={savingSection === 'basic'}
         >
           <option value="">Sin marca</option>
@@ -399,6 +446,22 @@ export default function ProductEditor() {
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="form-field">
+        Nombre del producto
+        <input
+          value={form.name}
+          onChange={(e) => {
+            setNameManuallyEdited(true)
+            updateField('name', e.target.value)
+          }}
+          onBlur={saveBasicIfChanged}
+          placeholder="Ej. Chaqueta Aviador"
+          disabled={savingSection === 'basic'}
+          required
+        />
+        {!nameManuallyEdited && <span className="page-block__hint">Se completa solo con categoría + marca</span>}
       </label>
 
       <label className="form-field">
@@ -412,6 +475,7 @@ export default function ProductEditor() {
             setPriceManuallyEdited(true)
             updateField('price', e.target.value)
           }}
+          onBlur={saveBasicIfChanged}
           placeholder="0.00"
           disabled={savingSection === 'basic'}
           required
@@ -423,7 +487,17 @@ export default function ProductEditor() {
         Categoría
         <select
           value={form.categoryId}
-          onChange={(e) => updateField('categoryId', e.target.value)}
+          onChange={(e) => {
+            updateField('categoryId', e.target.value)
+            if (e.target.value) {
+              try {
+                localStorage.setItem(LAST_CATEGORY_KEY, e.target.value)
+              } catch {
+                // ignore
+              }
+            }
+          }}
+          onBlur={saveBasicIfChanged}
           disabled={savingSection === 'basic'}
         >
           <option value="">Selecciona una categoría…</option>
@@ -444,6 +518,7 @@ export default function ProductEditor() {
         rows={5}
         value={form.description}
         onChange={(e) => updateField('description', e.target.value)}
+        onBlur={saveBasicIfChanged}
         placeholder="Describe el producto, materiales, corte…"
         disabled={savingSection === 'basic'}
       />
@@ -556,23 +631,28 @@ export default function ProductEditor() {
     </>
   )
 
-  // Avoids a flash of the category switches right before createDraft's
-  // own effect fires for a duplicate — that prefill means this screen is
-  // never really meant to be interacted with, just a brief stop en route.
+  let lastCategoryId: string | null = null
+  try {
+    lastCategoryId = localStorage.getItem(LAST_CATEGORY_KEY)
+  } catch {
+    // ignore
+  }
+  const hasValidLastCategory = !!lastCategoryId && categories.some((c) => String(c.id) === lastCategoryId)
+
+  // Avoids a flash of the category switches right before createDraft's own
+  // effect fires — either a duplicate's prefill, or a remembered category
+  // auto-creating on its own (see that effect above) — since in both cases
+  // this screen is never really meant to be interacted with, just a brief
+  // stop en route.
   const pendingDuplicate = isNewProduct && !!(location.state as { prefill?: DuplicatePrefill } | null)?.prefill
+  const pendingAutoCreate = isNewProduct && !pendingDuplicate && hasValidLastCategory
 
   // The last-used category floats to the front of the switches — picking
   // the same one again (the common case: a week's drop is usually all one
   // category) is then the very first button, not a search through the row.
   let orderedCategories = categories
-  if (isNewProduct) {
-    let lastCategoryId: string | null = null
-    try {
-      lastCategoryId = localStorage.getItem(LAST_CATEGORY_KEY)
-    } catch {
-      // ignore
-    }
-    const idx = lastCategoryId ? categories.findIndex((c) => String(c.id) === lastCategoryId) : -1
+  if (isNewProduct && hasValidLastCategory) {
+    const idx = categories.findIndex((c) => String(c.id) === lastCategoryId)
     if (idx > 0) {
       orderedCategories = [...categories]
       const [match] = orderedCategories.splice(idx, 1)
@@ -606,7 +686,7 @@ export default function ProductEditor() {
       {isNewProduct ? (
         <div className="card">
           <h2>Categoría</h2>
-          {saving || pendingDuplicate ? (
+          {saving || pendingDuplicate || pendingAutoCreate ? (
             <p className="state-msg">Creando producto…</p>
           ) : (
             <>
@@ -658,11 +738,10 @@ export default function ProductEditor() {
 
           <SectionCard
             title="Información Básica"
+            hideActions
             dirty={isSectionDirty('basic')}
             saving={savingSection === 'basic'}
             error={sectionErrors.basic}
-            onCancel={() => handleCancelSection('basic')}
-            onSave={() => handleSaveSection('basic')}
           >
             {basicFields}
             {descriptionField}
@@ -737,6 +816,10 @@ function SectionCard({
   error,
   onCancel,
   onSave,
+  // Información Básica passes this — its fields save themselves on blur
+  // (see saveBasicIfChanged) instead of through a Guardar/Cancelar bar, so
+  // there's nothing for this header to show beyond a brief "Guardando…".
+  hideActions,
   children,
 }: {
   title: string
@@ -745,8 +828,9 @@ function SectionCard({
   dirty: boolean
   saving: boolean
   error?: string
-  onCancel: () => void
-  onSave: () => void
+  onCancel?: () => void
+  onSave?: () => void
+  hideActions?: boolean
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -772,7 +856,9 @@ function SectionCard({
           <ChevronRightIcon className={`collapsible-card__chevron ${open ? 'collapsible-card__chevron--open' : ''}`} />
           <h2>{title}</h2>
         </span>
-        {dirty ? (
+        {hideActions ? (
+          saving && <span className="variants-editor__empty-hint">Guardando…</span>
+        ) : dirty ? (
           <div className="variants-editor__edit-actions" onClick={(e) => e.stopPropagation()}>
             <span className="variants-editor__dirty-hint">Cambios sin guardar</span>
             <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel} disabled={saving}>
