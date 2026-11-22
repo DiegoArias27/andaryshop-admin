@@ -199,6 +199,45 @@ img {
   z-index: 46;
 }
 
+.upload-queue-widget {
+  position: fixed;
+  right: 20px;
+  bottom: 150px;
+  z-index: 46;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.upload-queue-widget--error {
+  background: var(--red);
+}
+
+.upload-queue-widget svg {
+  flex-shrink: 0;
+  animation: upload-queue-spin 1.2s linear infinite;
+}
+
+.upload-queue-widget--error svg {
+  animation: none;
+}
+
+@keyframes upload-queue-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .notifications-bell {
   position: fixed;
   right: 20px;
@@ -1728,22 +1767,11 @@ img {
   margin-top: 4px;
 }
 
-.editor-grid {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 24px;
-  align-items: start;
-  max-width: 1100px;
-}
-
 .editor-main {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  /* .editor-main is itself a grid item of .editor-grid — same "won't
-     shrink below content" default applies at that level too, so this is
-     needed on top of the rule below, not instead of it. */
-  min-width: 0;
+  max-width: 700px;
 }
 
 /* A flex/grid item's default min-width is auto, not 0 — it refuses to
@@ -1800,38 +1828,6 @@ img {
   color: var(--gray-400);
   text-decoration: line-through;
   margin-left: 4px;
-}
-
-@media (max-width: 900px) {
-  .editor-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.editor-side {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 24px;
-  /* .editor-side is itself a grid item of .editor-grid (same reasoning as
-     .editor-main's own min-width: 0) — without this, GalleryManager's
-     image rows (only rendered once a product actually has a photo, which
-     is exactly why this never showed up testing with image-less products)
-     push it wider than its grid track instead of ever shrinking to fit,
-     stretching the whole page on mobile where .editor-grid collapses to a
-     single column. */
-  min-width: 0;
-}
-
-.editor-side > * {
-  min-width: 0;
-}
-
-@media (max-width: 900px) {
-  .editor-side {
-    position: static;
-  }
 }
 
 /* Dropzone image upload */

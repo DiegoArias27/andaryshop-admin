@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
 import { PosSessionProvider } from './context/PosSessionContext'
+import { UploadQueueProvider } from './context/UploadQueueContext'
 import { useAuth } from './hooks/useAuth'
 import AdminLayout from './components/layout/AdminLayout'
 import Login from './pages/Login'
@@ -76,15 +77,17 @@ function AppRoutes() {
 export default function App() {
   return (
     <ToastProvider>
-      <ConfirmProvider>
-        <AuthProvider>
-          <PosSessionProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </PosSessionProvider>
-        </AuthProvider>
-      </ConfirmProvider>
+      <UploadQueueProvider>
+        <ConfirmProvider>
+          <AuthProvider>
+            <PosSessionProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </PosSessionProvider>
+          </AuthProvider>
+        </ConfirmProvider>
+      </UploadQueueProvider>
     </ToastProvider>
   )
 }

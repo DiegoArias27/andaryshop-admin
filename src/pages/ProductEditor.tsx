@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Brand, Category, DiscountType, Product, ProductImage } from '../api/types'
+import type { Brand, Category, DiscountType, Product, ProductImage, WholesaleTier } from '../api/types'
 import GalleryManager from '../components/GalleryManager'
 import ToggleSwitch from '../components/ToggleSwitch'
 import VariantsEditor, { type VariantsEditorHandle } from '../components/VariantsEditor'
@@ -10,6 +10,8 @@ import { formatPrice } from '../utils/currency'
 import { useToast } from '../hooks/useToast'
 import FormSkeleton from '../components/FormSkeleton'
 import { BackIcon, ChevronRightIcon } from '../components/icons'
+
+const LAST_CATEGORY_KEY = 'andary-admin-last-category'
 
 const emptyForm = {
   name: '',
@@ -30,6 +32,14 @@ const emptyForm = {
 }
 
 type FormState = typeof emptyForm
+
+/** What "Agregar otro producto igual" (see the button near the bottom of an
+ * existing product) carries over to a fresh /productos/nuevo — everything
+ * except name (regenerated from category+brand, see buildAutoName) and
+ * anything tied to this specific item (tallas, fotos, isActive). */
+type DuplicatePrefill = Partial<
+  Pick<FormState, 'categoryId' | 'brandId' | 'price' | 'description' | 'discountType' | 'discountValue' | 'isNew' | 'isFeatured'>
+>
 
 const SECTION_FIELDS = {
   basic: ['name', 'description', 'price', 'brandId', 'categoryId'],
@@ -76,6 +86,8 @@ export default function ProductEditor() {
 
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
+  const [wholesaleTiers, setWholesaleTiers] = useState<WholesaleTier[]>([])
+  const [refsLoaded, setRefsLoaded] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [savedForm, setSavedForm] = useState<FormState>(emptyForm)
   const [images, setImages] = useState<ProductImage[]>([])
@@ -99,14 +111,24 @@ export default function ProductEditor() {
   const [variantsEditing, setVariantsEditing] = useState(false)
   const { toast } = useToast()
 
+  // A fresh draft (just created from a category switch or "Agregar otro
+  // producto igual") keeps its auto-suggested name/price live until the
+  // admin actually types over one by hand. An existing product being
+  // reopened later never does — its name/price were already deliberately
+  // set, even if they happen to match the pattern, and tweaking the brand
+  // to fix something unrelated shouldn't silently rewrite them.
+  const justCreated = !!(location.state as { justCreated?: boolean } | null)?.justCreated
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(!justCreated)
+  const [priceManuallyEdited, setPriceManuallyEdited] = useState(!justCreated)
+
   useEffect(() => {
-    api
-      .getCategories()
-      .then(setCategories)
-      .catch(() => {})
-    api
-      .getBrands()
-      .then(setBrands)
+    Promise.all([api.getCategories(), api.getBrands(), api.getWholesaleTiers()])
+      .then(([categoriesData, brandsData, tiersData]) => {
+        setCategories(categoriesData)
+        setBrands(brandsData)
+        setWholesaleTiers(tiersData)
+        setRefsLoaded(true)
+      })
       .catch(() => {})
   }, [])
 
@@ -211,28 +233,113 @@ export default function ProductEditor() {
     }
   }
 
-  // Creates the product from just the basics — Visibilidad, Descuento,
-  // Tallas e Inventario and Imágenes all become editable right after,
-  // exactly like an existing product (see the unified layout below). Tallas
-  // comes before Imágenes there on purpose: a photo can only be tagged by
-  // color once that color actually exists (see GalleryManager).
-  async function handleCreateSubmit(e: FormEvent) {
-    e.preventDefault()
+  function buildAutoName(categoryId: string, brandId: string): string {
+    const cat = categories.find((c) => String(c.id) === categoryId)
+    const br = brands.find((b) => String(b.id) === brandId)
+    return [cat?.name, br?.name].filter(Boolean).join(' ')
+  }
+
+  // The retail price is almost always just the cheapest (first) wholesale
+  // tier — a category's own tiers take priority, falling back to the
+  // "Todas las categorías" group the same way Wholesale.tsx's own pricing
+  // already does, so the suggestion here never contradicts what the
+  // storefront actually charges at quantity 1.
+  function suggestedPrice(categoryId: string): string {
+    const catId = categoryId ? Number(categoryId) : null
+    const ownTiers = wholesaleTiers.filter((t) => t.category_id === catId)
+    const pool = ownTiers.length > 0 ? ownTiers : wholesaleTiers.filter((t) => t.category_id === null)
+    if (pool.length === 0) return ''
+    const cheapest = [...pool].sort((a, b) => a.min_qty - b.min_qty)[0]
+    return cheapest.price_per_unit
+  }
+
+  // Creates the product right away instead of waiting for a full "basics"
+  // form — picking a category (see the switches below) or duplicating an
+  // existing product is already enough to start: name and price are
+  // auto-filled from it, and Visibilidad, Descuento, Tallas e Inventario e
+  // Imágenes all become usable immediately after, exactly like any other
+  // existing product (see the unified layout below).
+  async function createDraft(overrides: DuplicatePrefill = {}) {
     setSaving(true)
     setError(null)
     try {
-      // No photo yet — Imágenes only becomes available below once the
-      // product (and its colors) exist; GalleryManager sets this once the
-      // first one is added there.
-      const created = await api.createProduct({ ...toApiPayload(form), mainImageUrl: null })
-      toast(`Producto "${created.name}" creado con éxito`)
-      navigate(`/productos/${created.id}`, { replace: true })
+      const categoryId = overrides.categoryId ?? ''
+      const brandId = overrides.brandId ?? ''
+      const base: FormState = {
+        ...emptyForm,
+        ...overrides,
+        // Falls back to a placeholder on the rare "producto igual" of a
+        // product that never had a category or brand set — the backend
+        // rejects a blank name outright, and an empty draft is still better
+        // than a failed creation with no form left to fix it from.
+        name: buildAutoName(categoryId, brandId) || 'Producto nuevo',
+        price: overrides.price ?? suggestedPrice(categoryId),
+        // Always starts hidden regardless of what's duplicated — see
+        // emptyForm's isActive comment above.
+        isActive: false,
+      }
+      const created = await api.createProduct({ ...toApiPayload(base), mainImageUrl: null })
+      if (categoryId) {
+        try {
+          localStorage.setItem(LAST_CATEGORY_KEY, categoryId)
+        } catch {
+          // Private browsing / storage disabled — the switches still work,
+          // just won't remember the choice for next time.
+        }
+      }
+      navigate(`/productos/${created.id}`, { replace: true, state: { justCreated: true } })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar')
-    } finally {
+      setError(err instanceof Error ? err.message : 'Error al crear el producto')
       setSaving(false)
     }
   }
+
+  // "Agregar otro producto igual" (bottom of an existing product) lands
+  // here with its prefill in router state — creates the duplicate
+  // immediately, no extra tap needed, since choosing that button was
+  // already the deliberate action.
+  useEffect(() => {
+    if (!isNewProduct || !refsLoaded) return
+    const prefill = (location.state as { prefill?: DuplicatePrefill } | null)?.prefill
+    if (!prefill) return
+    createDraft(prefill)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewProduct, refsLoaded])
+
+  function handleDuplicate() {
+    navigate('/productos/nuevo', {
+      state: {
+        prefill: {
+          categoryId: form.categoryId,
+          brandId: form.brandId,
+          price: form.price,
+          description: form.description,
+          discountType: form.discountType,
+          discountValue: form.discountValue,
+          isNew: form.isNew,
+          isFeatured: form.isFeatured,
+        } satisfies DuplicatePrefill,
+      },
+    })
+  }
+
+  // Keeps the name/price tracking category+brand for as long as the admin
+  // hasn't typed over either by hand — see the nameManuallyEdited/
+  // priceManuallyEdited comment above. Only runs once a product actually
+  // exists; createDraft above handles the very first value directly.
+  useEffect(() => {
+    if (isNewProduct || nameManuallyEdited) return
+    const suggested = buildAutoName(form.categoryId, form.brandId)
+    if (suggested && suggested !== form.name) updateField('name', suggested)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewProduct, form.categoryId, form.brandId, categories, brands, nameManuallyEdited])
+
+  useEffect(() => {
+    if (isNewProduct || priceManuallyEdited) return
+    const suggested = suggestedPrice(form.categoryId)
+    if (suggested && suggested !== form.price) updateField('price', suggested)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewProduct, form.categoryId, wholesaleTiers, priceManuallyEdited])
 
   // Name/description/price/visibility/discount are saved independently
   // per-section above — this button's only remaining job for an existing
@@ -267,11 +374,15 @@ export default function ProductEditor() {
         Nombre del producto
         <input
           value={form.name}
-          onChange={(e) => updateField('name', e.target.value)}
+          onChange={(e) => {
+            setNameManuallyEdited(true)
+            updateField('name', e.target.value)
+          }}
           placeholder="Ej. Chaqueta Aviador"
           disabled={savingSection === 'basic'}
           required
         />
+        {!nameManuallyEdited && <span className="page-block__hint">Se completa solo con categoría + marca</span>}
       </label>
 
       <label className="form-field">
@@ -297,11 +408,15 @@ export default function ProductEditor() {
           step="0.01"
           min="0"
           value={form.price}
-          onChange={(e) => updateField('price', e.target.value)}
+          onChange={(e) => {
+            setPriceManuallyEdited(true)
+            updateField('price', e.target.value)
+          }}
           placeholder="0.00"
           disabled={savingSection === 'basic'}
           required
         />
+        {!priceManuallyEdited && <span className="page-block__hint">Sugerido del primer rango de mayoreo</span>}
       </label>
 
       <label className="form-field">
@@ -441,6 +556,30 @@ export default function ProductEditor() {
     </>
   )
 
+  // Avoids a flash of the category switches right before createDraft's
+  // own effect fires for a duplicate — that prefill means this screen is
+  // never really meant to be interacted with, just a brief stop en route.
+  const pendingDuplicate = isNewProduct && !!(location.state as { prefill?: DuplicatePrefill } | null)?.prefill
+
+  // The last-used category floats to the front of the switches — picking
+  // the same one again (the common case: a week's drop is usually all one
+  // category) is then the very first button, not a search through the row.
+  let orderedCategories = categories
+  if (isNewProduct) {
+    let lastCategoryId: string | null = null
+    try {
+      lastCategoryId = localStorage.getItem(LAST_CATEGORY_KEY)
+    } catch {
+      // ignore
+    }
+    const idx = lastCategoryId ? categories.findIndex((c) => String(c.id) === lastCategoryId) : -1
+    if (idx > 0) {
+      orderedCategories = [...categories]
+      const [match] = orderedCategories.splice(idx, 1)
+      orderedCategories.unshift(match)
+    }
+  }
+
   return (
     <div className="page-block">
       <button
@@ -457,73 +596,55 @@ export default function ProductEditor() {
           <h1>{isNewProduct ? 'Nuevo Producto' : 'Editar Producto'}</h1>
           <p>
             {isNewProduct
-              ? 'Introduce los detalles del nuevo artículo para el catálogo.'
+              ? 'Elige la categoría para empezar — el resto se agrega en esta misma página.'
               : `Actualiza la información de "${product?.name}".`}
           </p>
         </div>
         {isNewProduct && <span className="badge-pill">Borrador</span>}
       </div>
 
-      <div className="editor-grid">
-        <div className="editor-main">
-          {isNewProduct ? (
-            <div className="card">
-              <h2>Información Básica</h2>
-              <form id="product-form" onSubmit={handleCreateSubmit}>
-                {basicFields}
-                {descriptionField}
-                {error && <p className="form-error">{error}</p>}
-              </form>
-            </div>
+      {isNewProduct ? (
+        <div className="card">
+          <h2>Categoría</h2>
+          {saving || pendingDuplicate ? (
+            <p className="state-msg">Creando producto…</p>
           ) : (
-            <SectionCard
-              title="Información Básica"
-              dirty={isSectionDirty('basic')}
-              saving={savingSection === 'basic'}
-              error={sectionErrors.basic}
-              onCancel={() => handleCancelSection('basic')}
-              onSave={() => handleSaveSection('basic')}
-            >
-              {basicFields}
-              {descriptionField}
-            </SectionCard>
+            <>
+              <div className="products-toolbar__checks">
+                {orderedCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="filter-check-pill"
+                    disabled={!refsLoaded}
+                    onClick={() => createDraft({ categoryId: String(c.id) })}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+              {refsLoaded && categories.length === 0 && (
+                <p className="state-msg">Aún no hay categorías — crea una primero en Categorías.</p>
+              )}
+              {error && <p className="form-error">{error}</p>}
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="editor-main">
+          {product && (
+            <div className="card">
+              <GalleryManager
+                productId={product.id}
+                productName={product.name}
+                images={images}
+                colors={productColors}
+                onCommitted={setImages}
+              />
+            </div>
           )}
 
-          {!isNewProduct && (
-            <SectionCard
-              title="Descuento"
-              hint={!!product?.collections.length && `Colecciones: ${product.collections.map((c) => c.name).join(', ')}`}
-              dirty={isSectionDirty('discount')}
-              saving={savingSection === 'discount'}
-              error={sectionErrors.discount}
-              onCancel={() => handleCancelSection('discount')}
-              onSave={() => handleSaveSection('discount')}
-            >
-              {discountFields}
-            </SectionCard>
-          )}
-
-          {!isNewProduct && (
-            <SectionCard
-              title="Visibilidad"
-              badge={!form.isActive && <span className="variants-editor__empty-hint">Oculto en tienda</span>}
-              dirty={isSectionDirty('visibility')}
-              saving={savingSection === 'visibility'}
-              error={sectionErrors.visibility}
-              onCancel={() => handleCancelSection('visibility')}
-              onSave={() => handleSaveSection('visibility')}
-            >
-              {visibilityFields}
-            </SectionCard>
-          )}
-
-          {/* Right after Visibilidad/Descuento and before Imágenes — on
-              mobile (where this column and editor-side below stack in DOM
-              order) that puts Tallas e Inventario right before Imágenes, so
-              a photo's color dropdown there actually has colors to offer
-              instead of the two being in the wrong order to depend on each
-              other. */}
-          {!isNewProduct && product && (
+          {product && (
             <div className="card variants-editor" ref={variantsSectionRef}>
               <VariantsEditor
                 ref={variantsRef}
@@ -534,33 +655,55 @@ export default function ProductEditor() {
               />
             </div>
           )}
+
+          <SectionCard
+            title="Información Básica"
+            dirty={isSectionDirty('basic')}
+            saving={savingSection === 'basic'}
+            error={sectionErrors.basic}
+            onCancel={() => handleCancelSection('basic')}
+            onSave={() => handleSaveSection('basic')}
+          >
+            {basicFields}
+            {descriptionField}
+          </SectionCard>
+
+          <SectionCard
+            title="Descuento"
+            hint={!!product?.collections.length && `Colecciones: ${product.collections.map((c) => c.name).join(', ')}`}
+            dirty={isSectionDirty('discount')}
+            saving={savingSection === 'discount'}
+            error={sectionErrors.discount}
+            onCancel={() => handleCancelSection('discount')}
+            onSave={() => handleSaveSection('discount')}
+          >
+            {discountFields}
+          </SectionCard>
+
+          <SectionCard
+            title="Visibilidad"
+            badge={!form.isActive && <span className="variants-editor__empty-hint">Oculto en tienda</span>}
+            dirty={isSectionDirty('visibility')}
+            saving={savingSection === 'visibility'}
+            error={sectionErrors.visibility}
+            onCancel={() => handleCancelSection('visibility')}
+            onSave={() => handleSaveSection('visibility')}
+          >
+            {visibilityFields}
+          </SectionCard>
         </div>
-
-        {!isNewProduct && product && (
-          <div className="editor-side">
-            <div className="card">
-              <GalleryManager productId={Number(id)} images={images} colors={productColors} onCommitted={setImages} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {isNewProduct && (
-        <p className="page-block__hint">
-          Visibilidad, descuento, tallas/colores/stock y fotos se agregan aquí mismo en cuanto guardes esta
-          información básica.
-        </p>
       )}
 
       <div className="form-actions">
         <button type="button" className="btn btn--ghost" onClick={() => navigate('/productos')}>
           {isNewProduct ? 'Cancelar' : 'Volver'}
         </button>
-        {isNewProduct ? (
-          <button type="submit" form="product-form" className="btn btn--accent" disabled={saving}>
-            {saving ? 'Guardando…' : 'Crear y continuar'}
+        {!isNewProduct && (
+          <button type="button" className="btn btn--ghost" onClick={handleDuplicate}>
+            + Agregar otro producto igual
           </button>
-        ) : (
+        )}
+        {!isNewProduct &&
           variantsEditing && (
             <>
               <button
@@ -575,8 +718,7 @@ export default function ProductEditor() {
                 {saving ? 'Guardando…' : 'Guardar tallas e inventario'}
               </button>
             </>
-          )
-        )}
+          )}
       </div>
     </div>
   )

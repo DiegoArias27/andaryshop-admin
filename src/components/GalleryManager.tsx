@@ -7,9 +7,11 @@ import ImageCropModal from './ImageCropModal'
 import ImageUploader from './ImageUploader'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
+import { useUploadQueue } from '../hooks/useUploadQueue'
 
 interface GalleryManagerProps {
   productId: number
+  productName: string
   images: ProductImage[]
   colors: string[]
   onCommitted: (images: ProductImage[]) => void
@@ -17,7 +19,7 @@ interface GalleryManagerProps {
 
 const SWIPE_THRESHOLD = 40
 
-export default function GalleryManager({ productId, images, colors, onCommitted }: GalleryManagerProps) {
+export default function GalleryManager({ productId, productName, images, colors, onCommitted }: GalleryManagerProps) {
   // Only reordering stages locally (a drag then a "Guardar orden" bar) —
   // color, delete, crop and upload all save immediately now, no more
   // "activar edición" gate first.
@@ -30,6 +32,7 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
   const touchStartXRef = useRef<number | null>(null)
   const confirm = useConfirm()
   const { toast } = useToast()
+  const { enqueue, subscribe } = useUploadQueue()
   // Closed by default (less to scroll past) — reordering forces it back
   // open, and so does having zero photos yet: right after creating a
   // product this is empty, and a new admin has no reason to open a
@@ -39,6 +42,15 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
   useEffect(() => {
     setOrderIds(images.map((img) => img.id))
   }, [images])
+
+  // Uploads enqueued below keep going even if the admin navigates away
+  // mid-upload (see UploadQueueContext) — this is what lets this exact
+  // instance pick the result back up live if they're still here (or come
+  // back to this same product) instead of only finding out on next load.
+  useEffect(() => {
+    return subscribe(productId, onCommitted)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId])
 
   // Lets any image anywhere in the browser's clipboard (a screenshot, a
   // copied photo from another tab/app) get added the same way a file picked
@@ -65,14 +77,9 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function uploadPastedFiles(files: File[]) {
+  function uploadPastedFiles(files: File[]) {
     for (const file of files) {
-      try {
-        const { url } = await api.uploadImage(file)
-        await handleUploaded(url)
-      } catch (err) {
-        toast(err instanceof Error ? err.message : 'Error al subir la imagen pegada', 'error')
-      }
+      enqueue({ file, productId, productName })
     }
   }
 
@@ -161,6 +168,15 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
     toast('Imagen eliminada con éxito')
   }
 
+  function handleFilesPicked(files: File[]) {
+    for (const file of files) {
+      enqueue({ file, productId, productName })
+    }
+  }
+
+  // Only the "Elegir de la galería" path still lands here — reusing an
+  // already-uploaded photo's URL, no actual upload to wait out, so there's
+  // nothing to gain from routing it through the background queue too.
   async function handleUploaded(url: string) {
     const updated = await api.addProductImages(productId, [url])
     onCommitted(updated)
@@ -259,13 +275,6 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
 
       {open && (
       <>
-      <p className="page-block__hint">
-        Arrastra para reordenar, o toca la estrella para hacer principal esa foto sin arrastrar — la primera foto
-        (marcada "Principal") es la portada del producto en la tienda. También puedes pegar una imagen copiada
-        (Ctrl+V). Asigna un color si la foto es solo de esa variante; si un color no tiene fotos propias, se le
-        mostrarán las marcadas como "General".
-      </p>
-
       {colors.length > 1 && images.length > 0 && images.every((img) => !img.color_name) && (
         <p className="page-block__hint page-block__hint--warning">
           ⚠️ Ninguna foto tiene un color asignado — en la tienda, elegir cualquiera de los {colors.length} colores de
@@ -356,6 +365,7 @@ export default function GalleryManager({ productId, images, colors, onCommitted 
           variant="inline"
           sizeHint="Recomendado: 1200×1600px (relación 3:4)"
           onUploaded={handleUploaded}
+          onFilesPicked={handleFilesPicked}
           multiple
         />
       </div>

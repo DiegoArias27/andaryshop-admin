@@ -5,6 +5,7 @@ import logo from '../../assets/AndaryShop.jpg'
 import BackToTop from '../BackToTop'
 import HeldSalesWidget from '../HeldSalesWidget'
 import NotificationsBell from '../NotificationsBell'
+import UploadQueueWidget from '../UploadQueueWidget'
 import {
   AwardIcon,
   BellIcon,
@@ -221,6 +222,7 @@ export default function AdminLayout() {
 
       <BackToTop />
       <HeldSalesWidget />
+      <UploadQueueWidget />
       <NotificationsBell />
     </div>
   )

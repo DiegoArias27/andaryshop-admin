@@ -7,8 +7,17 @@ interface ImageUploaderProps {
   /** May return a promise — when it does, each file's upload waits for the
    * previous one's onUploaded to finish before starting the next, so a
    * caller that does a read-modify-write (like GalleryManager's "fetch
-   * current images, append, save") doesn't race itself across files. */
+   * current images, append, save") doesn't race itself across files.
+   * Ignored when onFilesPicked is also given — see that prop instead. */
   onUploaded: (url: string) => void | Promise<void>
+  /** Alternative to onUploaded for callers that want to own the actual
+   * upload themselves (e.g. to queue it somewhere that outlives this
+   * component — see GalleryManager/UploadQueueContext) instead of having
+   * this component upload the file and wait right here. When given, picked
+   * or dropped files are handed over raw and this component shows no
+   * uploading state of its own at all — the caller is on the hook for all
+   * of that. */
+  onFilesPicked?: (files: File[]) => void
   variant?: 'block' | 'inline'
   label?: string
   hint?: string
@@ -28,6 +37,7 @@ interface ImageUploaderProps {
 
 export default function ImageUploader({
   onUploaded,
+  onFilesPicked,
   variant = 'block',
   label,
   hint = 'o haz clic para explorar',
@@ -74,7 +84,10 @@ export default function ImageUploader({
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
-    if (files.length > 0) uploadFiles(files)
+    if (files.length > 0) {
+      if (onFilesPicked) onFilesPicked(files)
+      else uploadFiles(files)
+    }
     e.target.value = ''
   }
 
@@ -82,7 +95,10 @@ export default function ImageUploader({
     e.preventDefault()
     setDragActive(false)
     const files = Array.from(e.dataTransfer.files ?? [])
-    if (files.length > 0) uploadFiles(files)
+    if (files.length > 0) {
+      if (onFilesPicked) onFilesPicked(files)
+      else uploadFiles(files)
+    }
   }
 
   const statusLabel = progress ? `Subiendo ${progress.done}/${progress.total}…` : 'Subiendo…'

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState, type DragEvent, type FormEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ProductVariant } from '../api/types'
@@ -126,9 +126,12 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   // was confusing to add one and have it just sit there unsaved, easy to
   // lose by navigating away. Just a confirmation — "Deshacer" here would be
   // redundant with the row's own "Eliminar" right after adding by mistake.
-  async function handleAdd(e: FormEvent) {
-    e.preventDefault()
-    if (!draft.size || !draft.colorName || !draft.barcode) return
+  // Wired to the draft stock field's onBlur/Enter below instead of a
+  // submit button — restocking the same few sizes and colors every week
+  // doesn't need an explicit "+ Agregar variante" click every single time,
+  // just filling the row in and moving on.
+  async function commitDraft() {
+    if (!draft.size || !draft.colorName || !draft.barcode || draft.stock === '') return
     const submitted = draft
     setDraft(emptyDraft)
     setBarcodeManuallyEdited(false)
@@ -149,6 +152,12 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
       setDraft(submitted)
       setBarcodeManuallyEdited(true)
     }
+  }
+
+  function handleStockKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    commitDraft()
   }
 
   function updateVariantField<K extends keyof ProductVariant>(variantId: number, field: K, value: ProductVariant[K]) {
@@ -436,18 +445,16 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
         </div>
       </div>
 
-      <form className="variant-form" onSubmit={handleAdd}>
+      <div className="variant-form">
           <input
             placeholder="Talla (S, M, L…)"
             value={draft.size}
             onChange={(e) => setDraft((d) => ({ ...d, size: e.target.value }))}
-            required
           />
           <input
             placeholder="Color (Negro…)"
             value={draft.colorName}
             onChange={(e) => setDraft((d) => ({ ...d, colorName: e.target.value }))}
-            required
           />
           <input
             type="color"
@@ -462,20 +469,17 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
               setBarcodeManuallyEdited(true)
               setDraft((d) => ({ ...d, barcode: e.target.value }))
             }}
-            required
           />
           <input
             type="number" inputMode="numeric"
             min="0"
-            placeholder="Stock"
+            placeholder="Stock — se agrega sola al terminar"
             value={draft.stock}
             onChange={(e) => setDraft((d) => ({ ...d, stock: e.target.value }))}
-            required
+            onBlur={commitDraft}
+            onKeyDown={handleStockKeyDown}
           />
-          <button type="submit" className="btn btn--primary btn--sm">
-            + Agregar variante
-          </button>
-      </form>
+      </div>
 
       {error && <p className="form-error">{error}</p>}
       </>
