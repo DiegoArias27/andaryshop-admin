@@ -77,10 +77,6 @@ export default function RestockHistory() {
   return (
     <div className="page-block">
       <h1>Historial de reabastecimiento</h1>
-      <p className="page-block__hint">
-        Cada vez que se surte inventario desde Punto de venta queda registrado aquí — qué producto, cuánto, quién lo
-        hizo y cuándo.
-      </p>
 
       <div className="orders-filters">
         <label className="form-field">

@@ -145,12 +145,6 @@ export default function Customers() {
       <div className="page-block__header">
         <div>
           <h1>Clientes</h1>
-          <p className="page-block__hint">
-            Cuentas de la tienda (inician sesión con Google). Ponle un descuento por correo para que se aplique
-            automáticamente en cada producto que pida — se etiqueta como "Cliente frecuente" en Ventas. Puedes
-            agregar el correo aquí antes de que la persona inicie sesión por primera vez; en cuanto entre con ese
-            correo, el descuento ya estará activo.
-          </p>
         </div>
         <button type="button" className="btn btn--accent" onClick={() => setAddOpen(true)}>
           + Agregar cliente

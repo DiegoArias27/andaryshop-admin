@@ -305,13 +305,48 @@ export default function StockLookup() {
 
   const resultProduct = result ? allProducts.find((p) => p.id === result.product_id) : undefined
 
+  // Stock itself is only ever actually deducted on "Completar venta" — this
+  // is just an early heads-up so a cashier doesn't build up a whole sale
+  // around a quantity that'll just get rejected there, same spirit as the
+  // confirmOrder stock check on the Ventas/WhatsApp side.
+  function stockForVariant(variantId: number | null): number | undefined {
+    return variantId == null ? undefined : findProductAndVariantById(variantId)?.variant.stock
+  }
+
+  // Every line of this variant counts against the same stock pool — gift
+  // and paid lines both leave the shelf once the sale is confirmed.
+  function committedQtyForVariant(variantId: number | null, excludeKey?: string): number {
+    if (variantId == null) return 0
+    return saleLines
+      .filter((l) => l.variantId === variantId && l.key !== excludeKey)
+      .reduce((sum, l) => sum + l.quantity, 0)
+  }
+
   function addLineToSale(input: Omit<SaleLine, 'quantity' | 'isGift' | 'overridePrice' | 'discountAmount'>, qty: number) {
+    // Match by variant (falling back to the raw key for lines with no
+    // variantId) rather than by key alone — a gift-flagged line must never
+    // silently absorb a fresh scan of the same item, or those new units
+    // would come out free too instead of ringing up as a normal sale.
+    const matchesVariant = (l: SaleLine) => (input.variantId != null ? l.variantId === input.variantId : l.key === input.key)
+
+    const stock = stockForVariant(input.variantId)
+    if (stock != null) {
+      const committed = committedQtyForVariant(input.variantId)
+      const allowed = Math.max(0, Math.min(qty, stock - committed))
+      if (allowed < qty) {
+        const label = `"${input.name}"${input.size ? ` — talla ${input.size}` : ''}`
+        toast(
+          allowed <= 0
+            ? `Ya tienes todo el stock disponible de ${label} en la venta (quedan ${stock}).`
+            : `Solo quedan ${stock - committed} disponibles de ${label} — se agregó ${allowed}.`,
+          'error'
+        )
+      }
+      qty = allowed
+    }
+    if (qty <= 0) return
+
     setSaleLines((prev) => {
-      // Match by variant (falling back to the raw key for lines with no
-      // variantId) rather than by key alone — a gift-flagged line must never
-      // silently absorb a fresh scan of the same item, or those new units
-      // would come out free too instead of ringing up as a normal sale.
-      const matchesVariant = (l: SaleLine) => (input.variantId != null ? l.variantId === input.variantId : l.key === input.key)
       const idx = prev.findIndex((l) => matchesVariant(l) && !l.isGift)
       if (idx >= 0) {
         const next = [...prev]
@@ -580,6 +615,15 @@ export default function StockLookup() {
   }
 
   function updateLineQty(key: string, qty: number) {
+    const line = saleLines.find((l) => l.key === key)
+    const stock = line ? stockForVariant(line.variantId) : undefined
+    if (line && stock != null) {
+      const maxAllowed = Math.max(0, stock - committedQtyForVariant(line.variantId, key))
+      if (qty > maxAllowed) {
+        toast(`Solo hay ${stock} disponibles de "${line.name}"${line.size ? ` — talla ${line.size}` : ''}.`, 'error')
+        qty = maxAllowed
+      }
+    }
     setSaleLines((prev) => {
       if (qty <= 0) return prev.filter((l) => l.key !== key)
       return prev.map((l) => (l.key === key ? { ...l, quantity: qty } : l))
@@ -842,11 +886,6 @@ export default function StockLookup() {
   return (
     <div className="page-block">
       <h1>Punto de venta</h1>
-      <p className="page-block__hint">
-        Escanea o busca un producto y se agrega solo a la venta actual — presiona "Completar venta" para cobrarla y
-        descontar el stock al instante (queda registrada en Ventas). Activa "Reabastecer" para recibir mercancía
-        nueva e imprimir sus etiquetas en vez de vender.
-      </p>
 
       <div className="scanner-header">
         <span className="scanner-header__dot" />

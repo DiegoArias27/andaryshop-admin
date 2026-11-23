@@ -360,13 +360,16 @@ function draftItemFromOrderItem(i: OrderItem): OrderItemInput {
 /** A small inline search-and-pick panel for "Añadir producto de regalo" —
  * picks a specific product + variant (so confirming the sale still deducts
  * its stock, same as any other line). */
-function GiftProductPicker({ onPick, onCancel }: { onPick: (product: Product, variant: ProductVariant) => void; onCancel: () => void }) {
-  const [products, setProducts] = useState<Product[] | null>(null)
+function GiftProductPicker({
+  products,
+  onPick,
+  onCancel,
+}: {
+  products: Product[] | null
+  onPick: (product: Product, variant: ProductVariant) => void
+  onCancel: () => void
+}) {
   const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    api.getProducts().then(setProducts).catch(() => setProducts([]))
-  }, [])
 
   const term = search.trim().toLowerCase()
   const filtered = (products ?? []).filter((p) => !term || p.name.toLowerCase().includes(term))
@@ -416,7 +419,17 @@ function GiftProductPicker({ onPick, onCancel }: { onPick: (product: Product, va
   )
 }
 
-function OrderCard({ order, returns, onChanged }: { order: Order; returns: ReturnRecord[]; onChanged: () => void }) {
+function OrderCard({
+  order,
+  returns,
+  products,
+  onChanged,
+}: {
+  order: Order
+  returns: ReturnRecord[]
+  products: Product[] | null
+  onChanged: () => void
+}) {
   const [editing, setEditing] = useState(false)
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [draftItems, setDraftItems] = useState<OrderItemInput[]>([])
@@ -470,7 +483,42 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
     setEditing(true)
   }
 
+  // Stock is only actually deducted once the sale is confirmed (see
+  // confirmOrder) — this is just an early heads-up so the admin isn't
+  // surprised by a "stock insuficiente" rejection only at that point.
+  function stockForVariant(variantId: number | null | undefined): number | undefined {
+    if (variantId == null || !products) return undefined
+    for (const p of products) {
+      const v = p.variants.find((v) => v.id === variantId)
+      if (v) return v.stock
+    }
+    return undefined
+  }
+
+  // Every draft line of this variant counts against the same stock pool —
+  // addDraftProduct never merges lines (each "add" is its own row even for
+  // a repeat variant), so a single line's own quantity isn't the whole
+  // picture.
+  function committedQtyInDraft(variantId: number | null | undefined, excludeIdx?: number): number {
+    if (variantId == null) return 0
+    return draftItems.reduce(
+      (sum, it, i) => (i !== excludeIdx && it.variantId === variantId ? sum + it.quantity : sum),
+      0
+    )
+  }
+
   function updateDraftItem(idx: number, changes: Partial<OrderItemInput>) {
+    if (changes.quantity != null) {
+      const item = draftItems[idx]
+      const stock = stockForVariant(item?.variantId)
+      if (stock != null) {
+        const maxAllowed = Math.max(0, stock - committedQtyInDraft(item.variantId, idx))
+        if (changes.quantity > maxAllowed) {
+          toast(`Solo hay ${stock} disponibles de "${item.productName}"${item.size ? ` — ${item.size}` : ''}.`, 'error')
+          changes = { ...changes, quantity: maxAllowed }
+        }
+      }
+    }
     setDraftItems((items) => items.map((it, i) => (i === idx ? { ...it, ...changes } : it)))
   }
 
@@ -479,6 +527,14 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
   }
 
   function addDraftProduct(product: Product, variant: ProductVariant, isGift: boolean) {
+    const committed = committedQtyInDraft(variant.id)
+    if (committed >= variant.stock) {
+      toast(
+        `Ya tienes todo el stock disponible de "${product.name}" — ${variant.size}, ${variant.color_name} en esta venta (quedan ${variant.stock}).`,
+        'error'
+      )
+      return
+    }
     setDraftItems((items) => [
       ...items,
       {
@@ -869,7 +925,13 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                 </tr>
               </thead>
               <tbody>
-                {draftItems.map((item, idx) => (
+                {draftItems.map((item, idx) => {
+                  const itemStock = stockForVariant(item.variantId)
+                  const maxQty =
+                    itemStock != null
+                      ? Math.max(item.quantity, itemStock - committedQtyInDraft(item.variantId, idx))
+                      : undefined
+                  return (
                   <tr key={idx}>
                     <td className="admin-table__cell--media">
                       {item.mainImageUrl ? (
@@ -895,6 +957,7 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                       <NumberField
                         key={idx}
                         min={1}
+                        max={maxQty}
                         value={item.quantity}
                         onValueChange={(n) => updateDraftItem(idx, { quantity: Math.max(1, n) })}
                         style={{ width: 60 }}
@@ -925,15 +988,24 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                       </button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
 
           {showProductPicker ? (
-            <GiftProductPicker onPick={(p, v) => addDraftProduct(p, v, false)} onCancel={() => setShowProductPicker(false)} />
+            <GiftProductPicker
+              products={products}
+              onPick={(p, v) => addDraftProduct(p, v, false)}
+              onCancel={() => setShowProductPicker(false)}
+            />
           ) : showGiftPicker ? (
-            <GiftProductPicker onPick={(p, v) => addDraftProduct(p, v, true)} onCancel={() => setShowGiftPicker(false)} />
+            <GiftProductPicker
+              products={products}
+              onPick={(p, v) => addDraftProduct(p, v, true)}
+              onCancel={() => setShowGiftPicker(false)}
+            />
           ) : (
             <div className="order-card__actions">
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => setShowProductPicker(true)}>
@@ -1063,6 +1135,9 @@ export default function Orders() {
   const [status, setStatus] = useState<OrderStatus | ''>((searchParams.get('status') as OrderStatus) || '')
   const [source, setSource] = useState<OrderSource | ''>((searchParams.get('source') as OrderSource) || '')
   const [data, setData] = useState<OrdersResponse | null>(null)
+  // Loaded once here (not per OrderCard) — every card's edit view needs it
+  // for live stock checks while adding a product or bumping a quantity.
+  const [products, setProducts] = useState<Product[] | null>(null)
   const [returnsByOrder, setReturnsByOrder] = useState<Map<number, ReturnRecord[]>>(new Map())
   // Scoped to the same from/to as the orders list (unlike returnsByOrder
   // above, which is deliberately unscoped) — just for the "Cambios"/
@@ -1120,6 +1195,10 @@ export default function Orders() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [from, to, status, source, confirmedFrom, confirmedTo])
+
+  useEffect(() => {
+    api.getProducts().then(setProducts).catch(() => setProducts([]))
+  }, [])
 
   // "Pendiente" can never match a mostrador sale — it's born confirmed and
   // only ever moves to cancelled (see cancelConfirmedOrder). Steer away from
@@ -1232,10 +1311,6 @@ export default function Orders() {
   return (
     <div className="page-block">
       <h1>Ventas</h1>
-      <p className="page-block__hint">
-        Ventas por WhatsApp (carrito, compra rápida) y en mostrador (Punto de venta). Confirma una venta pendiente
-        para descontar el stock — mientras esté pendiente puedes editarla, agregar un regalo o aplicar descuentos.
-      </p>
 
       {cutStatus === 'done' && (
         <div className="cash-cut-banner cash-cut-banner--done">
@@ -1437,7 +1512,13 @@ export default function Orders() {
 
       <div className="orders-list">
         {visibleOrders.map((order) => (
-          <OrderCard key={order.id} order={order} returns={returnsByOrder.get(order.id) ?? []} onChanged={load} />
+          <OrderCard
+            key={order.id}
+            order={order}
+            returns={returnsByOrder.get(order.id) ?? []}
+            products={products}
+            onChanged={load}
+          />
         ))}
       </div>
     </div>

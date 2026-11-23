@@ -184,11 +184,6 @@ export default function Returns() {
   return (
     <div className="page-block">
       <h1>Devoluciones y cambios</h1>
-      <p className="page-block__hint">
-        Registra una devolución o cambio desde la venta correspondiente en Ventas (botón "Devolución / Cambio" en
-        una venta confirmada) — aquí se ve el historial completo. Al registrar uno, el stock se ajusta de inmediato:
-        se repone lo devuelto y, en un cambio, se descuenta el producto de reemplazo.
-      </p>
 
       {orderFilter ? (
         <div className="orders-filters">

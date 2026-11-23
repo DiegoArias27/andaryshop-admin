@@ -336,10 +336,6 @@ export default function Categories() {
   return (
     <div className="page-block">
       <h1>Categorías</h1>
-      <p className="page-block__hint">
-        La foto y la frase son opcionales — se usan en el tile "Comprar por categoría" de la tienda. Sin ellas, se
-        toma automáticamente una foto de algún producto de la categoría y una frase genérica.
-      </p>
 
       {loading && <ListSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}

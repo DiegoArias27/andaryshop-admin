@@ -1592,10 +1592,6 @@ export default function Collections() {
       <div className="page-block__header">
         <div>
           <h1>Colecciones</h1>
-          <p className="page-block__hint">
-            Crea secciones personalizadas para el inicio de la tienda, con su propio banner, precios y productos
-            elegidos a mano.
-          </p>
         </div>
         {!showCreateForm && (
           <button type="button" className="btn btn--accent" onClick={() => setShowCreateForm(true)}>

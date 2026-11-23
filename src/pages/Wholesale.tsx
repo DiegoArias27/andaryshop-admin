@@ -149,11 +149,6 @@ export default function Wholesale() {
   return (
     <div className="page-block">
       <h1>Mayoreo</h1>
-      <p className="page-block__hint">
-        Cuando un cliente agrega varias unidades del mismo producto al carrito, se aplica automáticamente el precio
-        por unidad del rango correspondiente. Cada categoría puede tener sus propios rangos; los que se dejan en
-        "{ALL_CATEGORIES_LABEL}" aplican a cualquier categoría que no tenga rangos propios.
-      </p>
 
       {loading && <TableSkeleton columns={5} />}
       {error && <p className="state-msg state-msg--error">{error}</p>}

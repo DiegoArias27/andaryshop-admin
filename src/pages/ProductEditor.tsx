@@ -755,11 +755,6 @@ export default function ProductEditor() {
       <div className="editor-header">
         <div>
           <h1>{isNewProduct ? 'Nuevo Producto' : 'Editar Producto'}</h1>
-          <p>
-            {isNewProduct
-              ? 'Elige la categoría para empezar — el resto se agrega en esta misma página.'
-              : `Actualiza la información de "${product?.name}".`}
-          </p>
         </div>
         {isNewProduct && <span className="badge-pill">Borrador</span>}
       </div>

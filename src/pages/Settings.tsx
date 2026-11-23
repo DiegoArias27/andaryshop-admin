@@ -83,10 +83,6 @@ export default function Settings() {
   return (
     <div className="page-block">
       <h1>Configuración</h1>
-      <p className="page-block__hint">
-        Valores que antes estaban fijos en el código y ahora se pueden ajustar aquí, sin necesitar un cambio de
-        código.
-      </p>
 
       <div className="card" style={{ maxWidth: 560 }}>
         <h2>Etiquetas</h2>

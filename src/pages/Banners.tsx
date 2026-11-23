@@ -837,10 +837,6 @@ export default function Banners() {
   return (
     <div className="page-block">
       <h1>Banners</h1>
-      <p className="page-block__hint">
-        Administra todos los banners de la tienda: el carrusel principal de Inicio y las franjas promocionales que
-        puedes colocar en Inicio, Paquetes o una categoría específica.
-      </p>
 
       {loading && <BannersPageSkeleton />}
       {error && <p className="state-msg state-msg--error">{error}</p>}

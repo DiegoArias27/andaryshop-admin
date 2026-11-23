@@ -111,9 +111,6 @@ export default function CashCuts() {
   return (
     <div className="page-block">
       <h1>Cortes de caja</h1>
-      <p className="page-block__hint">
-        Cierra el periodo de ventas acumuladas desde el último corte — por WhatsApp y en mostrador (Punto de venta).
-      </p>
 
       {settings && (
         <div className="cash-cut-automation">
