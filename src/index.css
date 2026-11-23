@@ -1430,10 +1430,57 @@ img {
   margin-bottom: 0;
 }
 
+.product-tags {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.product-tags__title {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+
+.product-tags__add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.product-tags__add input {
+  flex: 1;
+  min-width: 160px;
+}
+
 .tag--lowstock {
   background: rgba(180, 95, 6, 0.12);
   color: var(--amber);
   margin-left: 6px;
+}
+
+.payment-status-select {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+
+.payment-status-select--missing {
+  background: rgba(224, 18, 48, 0.12);
+  color: var(--red);
+}
+
+.payment-status-select--partial {
+  background: rgba(180, 95, 6, 0.12);
+  color: var(--amber);
+}
+
+.payment-status-select--paid {
+  background: rgba(26, 157, 77, 0.12);
+  color: var(--green);
 }
 
 .tag--collection {

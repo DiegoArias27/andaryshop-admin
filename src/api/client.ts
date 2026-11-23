@@ -32,12 +32,14 @@ import type {
   OrderStatus,
   OrderUpdateInput,
   PaymentMethod,
+  PaymentStatus,
   OrdersResponse,
   PackagesTile,
   PackagesTileInput,
   PosSaleInput,
   ReturnCreateInput,
   ReturnRecord,
+  Tag,
   WholesaleTier,
   WholesaleTierInput,
   NotificationsResponse,
@@ -159,6 +161,12 @@ export const api = {
   updateCategory: (id: number, input: CategoryUpdateInput) =>
     request<Category>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deleteCategory: (id: number) => request<void>(`/categories/${id}`, { method: 'DELETE' }),
+
+  getTags: () => request<Tag[]>('/tags'),
+  createTag: (name: string) => request<Tag>('/tags', { method: 'POST', body: JSON.stringify({ name }) }),
+  deleteTag: (id: number) => request<void>(`/tags/${id}`, { method: 'DELETE' }),
+  setProductTags: (productId: number, tagIds: number[]) =>
+    request<Product>(`/products/${productId}/tags`, { method: 'PUT', body: JSON.stringify({ tagIds }) }),
 
   getPackagesTile: () => request<PackagesTile>('/packages-tile'),
   updatePackagesTile: (input: PackagesTileInput) =>
@@ -312,6 +320,8 @@ export const api = {
     request<Order>(`/orders/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) }),
   updateOrderPackaging: (id: number, isPackaged: boolean) =>
     request<Order>(`/orders/${id}/packaging`, { method: 'PATCH', body: JSON.stringify({ isPackaged }) }),
+  updatePaymentStatus: (id: number, paymentStatus: PaymentStatus) =>
+    request<Order>(`/orders/${id}/payment-status`, { method: 'PATCH', body: JSON.stringify({ paymentStatus }) }),
   confirmOrder: (id: number, paymentMethod?: PaymentMethod | null) =>
     request<Order>(`/orders/${id}/confirm`, { method: 'POST', body: JSON.stringify({ paymentMethod }) }),
   cancelOrder: (id: number) => request<void>(`/orders/${id}/cancel`, { method: 'POST' }),

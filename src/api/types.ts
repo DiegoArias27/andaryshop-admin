@@ -192,6 +192,16 @@ export interface Product {
   collection_discount_price?: string | null
   /** Active collections this product belongs to (with their pricing config). */
   collections: ProductCollectionMembership[]
+  tags: Tag[]
+}
+
+/** A reusable, free-form label ("Oferta", "Edición limitada"…) the admin
+ * creates once and applies to any number of products — see ProductEditor's
+ * "Etiquetas" section and Tags management. */
+export interface Tag {
+  id: number
+  name: string
+  slug: string
 }
 
 export interface VariantByBarcode {
@@ -625,6 +635,10 @@ export interface Order {
    * automatic way to learn the customer's number. Independent of
    * customer_phone, which only ever comes from a logged-in account. */
   guest_phone: string | null
+  /** Admin-tracked payment follow-up while a WhatsApp order is still
+   * pending — null for a POS sale (already paid at creation). Independent
+   * of payment_method, which only gets set once the order is confirmed. */
+  payment_status: PaymentStatus | null
   is_packaged: number
   packed_at: string | null
   created_at: string
@@ -633,6 +647,7 @@ export interface Order {
 }
 
 export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer'
+export type PaymentStatus = 'missing' | 'partial' | 'paid'
 
 export interface OrderItemInput {
   productId?: number | null

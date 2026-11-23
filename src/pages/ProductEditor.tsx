@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Brand, Category, DiscountType, Product, ProductImage, WholesaleTier } from '../api/types'
+import type { Brand, Category, DiscountType, Product, ProductImage, Tag, WholesaleTier } from '../api/types'
 import GalleryManager from '../components/GalleryManager'
 import ToggleSwitch from '../components/ToggleSwitch'
 import VariantsEditor, { type VariantsEditorHandle } from '../components/VariantsEditor'
@@ -76,7 +76,10 @@ type DuplicatePrefill = Partial<
 >
 
 const SECTION_FIELDS = {
-  basic: ['name', 'description', 'price', 'brandId', 'categoryId'],
+  // categoryId isn't here anymore — it saves itself immediately from the
+  // switches above Imágenes now (see handleCategoryChange), same
+  // click-and-done idea as the rest of this page.
+  basic: ['name', 'description', 'price', 'brandId'],
   discount: ['discountType', 'discountValue'],
   visibility: ['isNew', 'isFeatured', 'isActive'],
 } as const
@@ -121,6 +124,10 @@ export default function ProductEditor() {
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
   const [wholesaleTiers, setWholesaleTiers] = useState<WholesaleTier[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [productTagIds, setProductTagIds] = useState<Set<number>>(new Set())
+  const [newTagName, setNewTagName] = useState('')
+  const [savingTags, setSavingTags] = useState(false)
   const [refsLoaded, setRefsLoaded] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [savedForm, setSavedForm] = useState<FormState>(emptyForm)
@@ -156,11 +163,12 @@ export default function ProductEditor() {
   const [priceManuallyEdited, setPriceManuallyEdited] = useState(!justCreated)
 
   useEffect(() => {
-    Promise.all([api.getCategories(), api.getBrands(), api.getWholesaleTiers()])
-      .then(([categoriesData, brandsData, tiersData]) => {
+    Promise.all([api.getCategories(), api.getBrands(), api.getWholesaleTiers(), api.getTags()])
+      .then(([categoriesData, brandsData, tiersData, tagsData]) => {
         setCategories(categoriesData)
         setBrands(brandsData)
         setWholesaleTiers(tiersData)
+        setTags(tagsData)
         setRefsLoaded(true)
       })
       .catch(() => {})
@@ -192,6 +200,7 @@ export default function ProductEditor() {
         setSavedForm(loaded)
         setImages(data.images)
         setVariants(data.variants)
+        setProductTagIds(new Set(data.tags.map((t) => t.id)))
         setLoading(false)
       })
       .catch((err) => {
@@ -275,6 +284,65 @@ export default function ProductEditor() {
   function saveBasicIfChanged() {
     if (isNewProduct || !isSectionDirty('basic')) return
     handleSaveSection('basic')
+  }
+
+  // The switches above Imágenes are the ONLY way to change an existing
+  // product's category now (Información Básica no longer has a Categoría
+  // field) — a click saves immediately, same idea as everything else on
+  // this page that doesn't need its own separate Guardar step. Merges onto
+  // savedForm (not form) so it can never accidentally push some OTHER
+  // section's still-unsaved typed text along with it.
+  async function handleCategoryChange(categoryId: string) {
+    if (isNewProduct || !id) return
+    try {
+      localStorage.setItem(LAST_CATEGORY_KEY, categoryId)
+    } catch {
+      // ignore
+    }
+    const merged: FormState = { ...savedForm, categoryId }
+    try {
+      await api.updateProduct(Number(id), toApiPayload(merged))
+      setForm((prev) => ({ ...prev, categoryId }))
+      setSavedForm(merged)
+      toast('Categoría actualizada con éxito')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al guardar la categoría', 'error')
+    }
+  }
+
+  async function handleToggleTag(tagId: number) {
+    if (!id) return
+    const next = new Set(productTagIds)
+    if (next.has(tagId)) next.delete(tagId)
+    else next.add(tagId)
+    setSavingTags(true)
+    try {
+      await api.setProductTags(Number(id), [...next])
+      setProductTagIds(next)
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al guardar las etiquetas', 'error')
+    } finally {
+      setSavingTags(false)
+    }
+  }
+
+  async function handleAddNewTag() {
+    const name = newTagName.trim()
+    if (!name || !id) return
+    setSavingTags(true)
+    try {
+      const created = await api.createTag(name)
+      setTags((prev) => (prev.some((t) => t.id === created.id) ? prev : [...prev, created].sort((a, b) => a.name.localeCompare(b.name))))
+      const next = new Set(productTagIds)
+      next.add(created.id)
+      await api.setProductTags(Number(id), [...next])
+      setProductTagIds(next)
+      setNewTagName('')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al crear la etiqueta', 'error')
+    } finally {
+      setSavingTags(false)
+    }
   }
 
   function buildAutoName(categoryId: string, brandId: string): string {
@@ -483,31 +551,6 @@ export default function ProductEditor() {
         {!priceManuallyEdited && <span className="page-block__hint">Sugerido del primer rango de mayoreo</span>}
       </label>
 
-      <label className="form-field">
-        Categoría
-        <select
-          value={form.categoryId}
-          onChange={(e) => {
-            updateField('categoryId', e.target.value)
-            if (e.target.value) {
-              try {
-                localStorage.setItem(LAST_CATEGORY_KEY, e.target.value)
-              } catch {
-                // ignore
-              }
-            }
-          }}
-          onBlur={saveBasicIfChanged}
-          disabled={savingSection === 'basic'}
-        >
-          <option value="">Selecciona una categoría…</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
     </div>
   )
 
@@ -552,6 +595,44 @@ export default function ProductEditor() {
           </p>
         </div>
       )}
+
+      <div className="product-tags">
+        <h3 className="product-tags__title">Etiquetas</h3>
+        <div className="products-toolbar__checks">
+          {tags.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`filter-check-pill ${productTagIds.has(t.id) ? 'filter-check-pill--active' : ''}`}
+              onClick={() => handleToggleTag(t.id)}
+              disabled={savingTags}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+        <div className="product-tags__add">
+          <input
+            value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)}
+            placeholder="Nueva etiqueta"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddNewTag()
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={handleAddNewTag}
+            disabled={!newTagName.trim() || savingTags}
+          >
+            + Añadir nueva etiqueta
+          </button>
+        </div>
+      </div>
     </>
   )
 
@@ -712,6 +793,24 @@ export default function ProductEditor() {
         </div>
       ) : (
         <div className="editor-main">
+          {product && (
+            <div className="card">
+              <h2>Categoría</h2>
+              <div className="products-toolbar__checks">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`filter-check-pill ${String(c.id) === form.categoryId ? 'filter-check-pill--active' : ''}`}
+                    onClick={() => handleCategoryChange(String(c.id))}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {product && (
             <div className="card">
               <GalleryManager
