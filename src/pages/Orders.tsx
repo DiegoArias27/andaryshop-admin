@@ -32,6 +32,7 @@ import {
   ChartIcon,
   CheckIcon,
   ChevronRightIcon,
+  CopyIcon,
   EditIcon,
   GiftIcon,
   LayersIcon,
@@ -43,6 +44,8 @@ import {
   TransferIcon,
   WhatsappIcon,
 } from '../components/icons'
+
+const STOREFRONT_URL = import.meta.env.VITE_STOREFRONT_URL || 'http://localhost:5173'
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'Pendiente',
@@ -423,6 +426,15 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
   const { toast } = useToast()
   const confirmDialog = useConfirm()
 
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(`${STOREFRONT_URL}/pedido/${order.public_token}`)
+      toast('Link copiado')
+    } catch {
+      toast('No se pudo copiar el link', 'error')
+    }
+  }
+
   function startEdit() {
     setDraftItems(order.items.map(draftItemFromOrderItem))
     setDraftDiscount(order.discount_amount)
@@ -641,6 +653,9 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
           {order.payment_method && <span className="tag">{PAYMENT_METHOD_LABELS[order.payment_method]}</span>}
           <strong className="order-card__id">Venta #{order.id}</strong>
           <span className="order-card__date">{new Date(order.created_at).toLocaleString('es-MX')}</span>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={handleCopyLink}>
+            <CopyIcon width={14} height={14} /> Link
+          </button>
           {returns.length > 0 && (
             <Link to={`/devoluciones?order=${order.id}`} className="order-card__return-link">
               {hasReturn && hasExchange ? 'Ver devolución y cambio' : hasReturn ? 'Ver devolución' : 'Ver cambio'}

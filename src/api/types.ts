@@ -604,6 +604,10 @@ export interface OrderItem {
  * confirms it (which is also when stock is deducted) or cancels it. */
 export interface Order {
   id: number
+  /** Unguessable token for the storefront's public /pedido/:token page —
+   * lets a customer (guest or logged in) check this order's status
+   * without an account. See Orders.tsx's "Link" button. */
+  public_token: string
   customer_id: number | null
   customer_name: string | null
   customer_phone: string | null
