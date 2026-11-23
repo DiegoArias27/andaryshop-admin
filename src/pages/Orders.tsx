@@ -66,10 +66,12 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   transfer: 'Transferencia',
 }
 
-// Admin-tracked post-sale progress for a WhatsApp order — separate from
-// payment_method above, which only gets set once it's confirmed. Confirmar
-// venta auto-advances 'missing' to 'pending'; the other two are always set
-// by hand, whenever packaging/delivery actually happen.
+// Admin-tracked progress for a WhatsApp order — separate from
+// payment_method above, which only gets set once it's confirmed. Also the
+// pre-confirm packaging gate: "Confirmar venta" is disabled until this
+// reaches 'packaging' (see isPackaged below). Confirmar venta auto-advances
+// 'missing' to 'pending'; the other two are always set by hand, whenever
+// packaging/delivery actually happen.
 const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
   missing: 'Pago faltante',
   pending: 'Pedido pendiente',
@@ -544,15 +546,6 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
     }
   }
 
-  async function handleTogglePackaging() {
-    try {
-      await api.updateOrderPackaging(order.id, !order.is_packaged)
-      onChanged()
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Error al actualizar', 'error')
-    }
-  }
-
   async function handleCancelSale() {
     const ok = await confirmDialog({
       title: '¿Cancelar esta venta?',
@@ -592,6 +585,7 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
   }
 
   const isPending = order.status === 'pending'
+  const isPackaged = order.fulfillment_status === 'packaging' || order.fulfillment_status === 'delivered'
   const itemGroups = groupItemsByPackage(order.items)
   const showGroupLabels = itemGroups.length > 1 || itemGroups[0]?.label !== 'Individual'
 
@@ -715,13 +709,6 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
         </p>
       )}
 
-      {order.status !== 'cancelled' && (
-        <label className="order-card__packaging">
-          <input type="checkbox" checked={!!order.is_packaged} onChange={handleTogglePackaging} />
-          Empaquetado
-        </label>
-      )}
-
       {!editing ? (
         <>
           {itemGroups.map((group) => (
@@ -779,8 +766,8 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
                 type="button"
                 className="btn btn--accent btn--sm"
                 onClick={() => setShowPaymentPicker(true)}
-                disabled={!order.is_packaged}
-                title={!order.is_packaged ? 'Marca "Empaquetado" antes de confirmar' : undefined}
+                disabled={!isPackaged}
+                title={!isPackaged ? 'Selecciona "Empaquetando" en el estado del pedido antes de confirmar' : undefined}
               >
                 Confirmar venta
               </button>
@@ -790,7 +777,11 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
               <button type="button" className="btn btn--ghost btn--sm" onClick={handleCancelSale}>
                 Cancelar venta
               </button>
-              {!order.is_packaged && <span className="order-card__packaging-hint">Marca "Empaquetado" antes de confirmar</span>}
+              {!isPackaged && (
+                <span className="order-card__packaging-hint">
+                  Selecciona "Empaquetando" en el estado del pedido antes de confirmar
+                </span>
+              )}
             </div>
           )}
 

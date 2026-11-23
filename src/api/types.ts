@@ -635,13 +635,13 @@ export interface Order {
    * automatic way to learn the customer's number. Independent of
    * customer_phone, which only ever comes from a logged-in account. */
   guest_phone: string | null
-  /** Admin-tracked post-sale progress for a WhatsApp order — pago faltante
-   * → pedido pendiente → empaquetando → entregado. Null for a POS sale
-   * (already paid and handed over at creation). confirmOrder auto-advances
-   * 'missing' to 'pending'; 'packaging'/'delivered' are always set by hand. */
+  /** Admin-tracked progress for a WhatsApp order — pago faltante → pedido
+   * pendiente → empaquetando → entregado. Null for a POS sale (already
+   * paid and handed over at creation). Also the pre-confirm packaging
+   * gate: confirmOrder refuses to run until this reaches 'packaging'.
+   * confirmOrder auto-advances 'missing' to 'pending'; 'packaging' and
+   * 'delivered' are always set by hand. */
   fulfillment_status: FulfillmentStatus | null
-  is_packaged: number
-  packed_at: string | null
   created_at: string
   confirmed_at: string | null
   items: OrderItem[]

@@ -6307,23 +6307,6 @@ img {
   font-size: 16px;
 }
 
-.order-card__packaging {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 0 0;
-  font-size: 16px;
-  color: var(--gray-600);
-  cursor: pointer;
-  width: fit-content;
-}
-
-.order-card__packaging input {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--red);
-}
-
 .order-card__packaging-hint {
   font-size: 16px;
   color: var(--red);

@@ -318,8 +318,6 @@ export const api = {
     request<Order>(`/orders/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateOrderPhone: (id: number, phone: string | null) =>
     request<Order>(`/orders/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) }),
-  updateOrderPackaging: (id: number, isPackaged: boolean) =>
-    request<Order>(`/orders/${id}/packaging`, { method: 'PATCH', body: JSON.stringify({ isPackaged }) }),
   updateFulfillmentStatus: (id: number, fulfillmentStatus: FulfillmentStatus) =>
     request<Order>(`/orders/${id}/fulfillment-status`, { method: 'PATCH', body: JSON.stringify({ fulfillmentStatus }) }),
   confirmOrder: (id: number, paymentMethod?: PaymentMethod | null) =>
