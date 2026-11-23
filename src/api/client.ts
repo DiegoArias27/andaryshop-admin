@@ -32,7 +32,7 @@ import type {
   OrderStatus,
   OrderUpdateInput,
   PaymentMethod,
-  PaymentStatus,
+  FulfillmentStatus,
   OrdersResponse,
   PackagesTile,
   PackagesTileInput,
@@ -320,8 +320,8 @@ export const api = {
     request<Order>(`/orders/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) }),
   updateOrderPackaging: (id: number, isPackaged: boolean) =>
     request<Order>(`/orders/${id}/packaging`, { method: 'PATCH', body: JSON.stringify({ isPackaged }) }),
-  updatePaymentStatus: (id: number, paymentStatus: PaymentStatus) =>
-    request<Order>(`/orders/${id}/payment-status`, { method: 'PATCH', body: JSON.stringify({ paymentStatus }) }),
+  updateFulfillmentStatus: (id: number, fulfillmentStatus: FulfillmentStatus) =>
+    request<Order>(`/orders/${id}/fulfillment-status`, { method: 'PATCH', body: JSON.stringify({ fulfillmentStatus }) }),
   confirmOrder: (id: number, paymentMethod?: PaymentMethod | null) =>
     request<Order>(`/orders/${id}/confirm`, { method: 'POST', body: JSON.stringify({ paymentMethod }) }),
   cancelOrder: (id: number) => request<void>(`/orders/${id}/cancel`, { method: 'POST' }),

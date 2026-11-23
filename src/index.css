@@ -1459,7 +1459,7 @@ img {
   margin-left: 6px;
 }
 
-.payment-status-select {
+.fulfillment-status-select {
   font-size: 15px;
   font-weight: 700;
   padding: 3px 8px;
@@ -1468,17 +1468,22 @@ img {
   cursor: pointer;
 }
 
-.payment-status-select--missing {
+.fulfillment-status-select--missing {
   background: rgba(224, 18, 48, 0.12);
   color: var(--red);
 }
 
-.payment-status-select--partial {
+.fulfillment-status-select--pending {
   background: rgba(180, 95, 6, 0.12);
   color: var(--amber);
 }
 
-.payment-status-select--paid {
+.fulfillment-status-select--packaging {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--blue);
+}
+
+.fulfillment-status-select--delivered {
   background: rgba(26, 157, 77, 0.12);
   color: var(--green);
 }

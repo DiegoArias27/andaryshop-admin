@@ -9,7 +9,7 @@ import type {
   OrderStatus,
   OrdersResponse,
   PaymentMethod,
-  PaymentStatus,
+  FulfillmentStatus,
   Product,
   ProductStatVariant,
   ProductVariant,
@@ -66,12 +66,15 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   transfer: 'Transferencia',
 }
 
-// Admin-tracked payment follow-up for a pending WhatsApp order — separate
-// from payment_method above, which only gets set once it's confirmed.
-const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+// Admin-tracked post-sale progress for a WhatsApp order — separate from
+// payment_method above, which only gets set once it's confirmed. Confirmar
+// venta auto-advances 'missing' to 'pending'; the other two are always set
+// by hand, whenever packaging/delivery actually happen.
+const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
   missing: 'Pago faltante',
-  partial: 'Pago parcial',
-  paid: 'Pagado',
+  pending: 'Pedido pendiente',
+  packaging: 'Empaquetando',
+  delivered: 'Entregado',
 }
 
 type StatView = 'top' | 'all' | 'packages' | 'category' | 'gifts'
@@ -432,7 +435,7 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
   const [savingPhone, setSavingPhone] = useState(false)
   const [showPaymentPicker, setShowPaymentPicker] = useState(false)
   const [confirmPaymentMethod, setConfirmPaymentMethod] = useState<PaymentMethod>('cash')
-  const [updatingPaymentStatus, setUpdatingPaymentStatus] = useState(false)
+  const [updatingFulfillmentStatus, setUpdatingFulfillmentStatus] = useState(false)
   const { toast } = useToast()
   const confirmDialog = useConfirm()
 
@@ -445,15 +448,15 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
     }
   }
 
-  async function handlePaymentStatusChange(next: PaymentStatus) {
-    setUpdatingPaymentStatus(true)
+  async function handleFulfillmentStatusChange(next: FulfillmentStatus) {
+    setUpdatingFulfillmentStatus(true)
     try {
-      await api.updatePaymentStatus(order.id, next)
+      await api.updateFulfillmentStatus(order.id, next)
       onChanged()
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Error al actualizar el estado de pago', 'error')
+      toast(err instanceof Error ? err.message : 'Error al actualizar el estado', 'error')
     } finally {
-      setUpdatingPaymentStatus(false)
+      setUpdatingFulfillmentStatus(false)
     }
   }
 
@@ -675,13 +678,13 @@ function OrderCard({ order, returns, onChanged }: { order: Order; returns: Retur
           {order.payment_method && <span className="tag">{PAYMENT_METHOD_LABELS[order.payment_method]}</span>}
           {order.source === 'whatsapp' && (
             <select
-              className={`payment-status-select payment-status-select--${order.payment_status ?? 'missing'}`}
-              value={order.payment_status ?? 'missing'}
-              onChange={(e) => handlePaymentStatusChange(e.target.value as PaymentStatus)}
-              disabled={updatingPaymentStatus}
-              aria-label="Estado de pago"
+              className={`fulfillment-status-select fulfillment-status-select--${order.fulfillment_status ?? 'missing'}`}
+              value={order.fulfillment_status ?? 'missing'}
+              onChange={(e) => handleFulfillmentStatusChange(e.target.value as FulfillmentStatus)}
+              disabled={updatingFulfillmentStatus}
+              aria-label="Estado del pedido"
             >
-              {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
+              {Object.entries(FULFILLMENT_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

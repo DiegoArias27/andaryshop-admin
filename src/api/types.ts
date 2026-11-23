@@ -635,10 +635,11 @@ export interface Order {
    * automatic way to learn the customer's number. Independent of
    * customer_phone, which only ever comes from a logged-in account. */
   guest_phone: string | null
-  /** Admin-tracked payment follow-up while a WhatsApp order is still
-   * pending — null for a POS sale (already paid at creation). Independent
-   * of payment_method, which only gets set once the order is confirmed. */
-  payment_status: PaymentStatus | null
+  /** Admin-tracked post-sale progress for a WhatsApp order — pago faltante
+   * → pedido pendiente → empaquetando → entregado. Null for a POS sale
+   * (already paid and handed over at creation). confirmOrder auto-advances
+   * 'missing' to 'pending'; 'packaging'/'delivered' are always set by hand. */
+  fulfillment_status: FulfillmentStatus | null
   is_packaged: number
   packed_at: string | null
   created_at: string
@@ -647,7 +648,7 @@ export interface Order {
 }
 
 export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer'
-export type PaymentStatus = 'missing' | 'partial' | 'paid'
+export type FulfillmentStatus = 'missing' | 'pending' | 'packaging' | 'delivered'
 
 export interface OrderItemInput {
   productId?: number | null
