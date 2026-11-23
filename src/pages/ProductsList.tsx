@@ -165,7 +165,17 @@ export default function ProductsList() {
     }
   }, [page, search, categoryId, brandId, collectionId, onlyNew, onlyBestseller, onlyDiscounted, onlyLowStock, onlyOutOfStock])
 
+  // Gated on !loading — the skeleton shown while loading is a different
+  // (usually shorter) height than the real table, so the browser can
+  // clamp the scroll position down to fit it the moment this page first
+  // mounts. Recording scroll unconditionally meant that clamp sometimes
+  // overwrote the correct saved position (from just before navigating
+  // away to edit a product) with that shorter one, before the restore
+  // effect below ever got to read it — which one won was a race against
+  // how long the fetch took, i.e. exactly "sometimes it works, sometimes
+  // it doesn't."
   useEffect(() => {
+    if (loading) return
     function saveScroll() {
       try {
         sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))
@@ -175,7 +185,7 @@ export default function ProductsList() {
     }
     window.addEventListener('scroll', saveScroll, { passive: true })
     return () => window.removeEventListener('scroll', saveScroll)
-  }, [])
+  }, [loading])
 
   // Restores on every mount with a saved position, not just a POP
   // navigation — a real back (Volver, the browser's own back button) is
