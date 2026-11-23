@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useNavigationType } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Brand, Category, Collection, DiscountType, Product, ProductCollectionMembership } from '../api/types'
 import { formatPrice } from '../utils/currency'
@@ -24,8 +24,36 @@ function totalStockOf(p: Product): number {
   return p.variants.reduce((sum, v) => sum + v.stock, 0)
 }
 
+const STATE_KEY = 'andary-products-list-state'
+const SCROLL_KEY = 'andary-products-list-scroll'
+
+interface PersistedListState {
+  page: number
+  search: string
+  categoryId: string
+  brandId: string
+  collectionId: string
+  onlyNew: boolean
+  onlyBestseller: boolean
+  onlyDiscounted: boolean
+  onlyLowStock: boolean
+  onlyOutOfStock: boolean
+}
+
+// Read once (not per field) so every field's initial useState reads a
+// single consistent snapshot instead of each parsing sessionStorage on
+// its own.
+function loadPersistedState(): Partial<PersistedListState> {
+  try {
+    return JSON.parse(sessionStorage.getItem(STATE_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
 export default function ProductsList() {
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
   const settings = useAppSettings()
   const lowStockThreshold = settings?.low_stock_threshold ?? 5
   const [products, setProducts] = useState<Product[]>([])
@@ -34,17 +62,23 @@ export default function ProductsList() {
   const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [brandId, setBrandId] = useState('')
-  const [collectionId, setCollectionId] = useState('')
-  const [onlyNew, setOnlyNew] = useState(false)
-  const [onlyBestseller, setOnlyBestseller] = useState(false)
-  const [onlyDiscounted, setOnlyDiscounted] = useState(false)
-  const [onlyLowStock, setOnlyLowStock] = useState(false)
-  const [onlyOutOfStock, setOnlyOutOfStock] = useState(false)
+  // Filters/page/search all restore from sessionStorage regardless of how
+  // this page was reached (same as a filter's own usual stickiness); only
+  // the scroll position below is deliberately restored just on a real
+  // back navigation (see the POP-gated effect) — a fresh visit should
+  // still start at the top.
+  const [initialState] = useState(loadPersistedState)
+  const [search, setSearch] = useState(initialState.search ?? '')
+  const [categoryId, setCategoryId] = useState(initialState.categoryId ?? '')
+  const [brandId, setBrandId] = useState(initialState.brandId ?? '')
+  const [collectionId, setCollectionId] = useState(initialState.collectionId ?? '')
+  const [onlyNew, setOnlyNew] = useState(initialState.onlyNew ?? false)
+  const [onlyBestseller, setOnlyBestseller] = useState(initialState.onlyBestseller ?? false)
+  const [onlyDiscounted, setOnlyDiscounted] = useState(initialState.onlyDiscounted ?? false)
+  const [onlyLowStock, setOnlyLowStock] = useState(initialState.onlyLowStock ?? false)
+  const [onlyOutOfStock, setOnlyOutOfStock] = useState(initialState.onlyOutOfStock ?? false)
   const [viewerImage, setViewerImage] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(initialState.page ?? 1)
   const pageSize = 10
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [discountType, setDiscountType] = useState<DiscountType | ''>('')
@@ -73,6 +107,63 @@ export default function ProductsList() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      const toSave: PersistedListState = {
+        page,
+        search,
+        categoryId,
+        brandId,
+        collectionId,
+        onlyNew,
+        onlyBestseller,
+        onlyDiscounted,
+        onlyLowStock,
+        onlyOutOfStock,
+      }
+      sessionStorage.setItem(STATE_KEY, JSON.stringify(toSave))
+    } catch {
+      // Private browsing / storage disabled — filters still work, just
+      // won't be remembered for next time.
+    }
+  }, [page, search, categoryId, brandId, collectionId, onlyNew, onlyBestseller, onlyDiscounted, onlyLowStock, onlyOutOfStock])
+
+  useEffect(() => {
+    function saveScroll() {
+      try {
+        sessionStorage.setItem(SCROLL_KEY, String(window.scrollY))
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener('scroll', saveScroll, { passive: true })
+    return () => window.removeEventListener('scroll', saveScroll)
+  }, [])
+
+  // Only on an actual back navigation (e.g. coming back from editing a
+  // product) — a fresh visit (clicking "Productos" in the sidebar) still
+  // starts at the top, same as any normal page load. Waits for `loading`
+  // to clear so the table has its real height before scrolling, not the
+  // much shorter skeleton's.
+  useEffect(() => {
+    if (navigationType !== 'POP' || loading) return
+    let raw: string | null = null
+    try {
+      raw = sessionStorage.getItem(SCROLL_KEY)
+    } catch {
+      // ignore
+    }
+    const y = raw ? Number(raw) : NaN
+    if (!Number.isFinite(y)) return
+    const frame = requestAnimationFrame(() => window.scrollTo(0, y))
+    return () => cancelAnimationFrame(frame)
+  }, [navigationType, loading])
+
+  function handlePageChange(next: number) {
+    setPage(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   async function handleDelete(id: number, name: string) {
     const ok = await confirm({
@@ -491,7 +582,7 @@ export default function ProductsList() {
                   type="button"
                   className="btn btn--ghost btn--sm"
                   disabled={currentPage <= 1}
-                  onClick={() => setPage(currentPage - 1)}
+                  onClick={() => handlePageChange(currentPage - 1)}
                 >
                   Anterior
                 </button>
@@ -499,7 +590,7 @@ export default function ProductsList() {
                   type="button"
                   className="btn btn--ghost btn--sm"
                   disabled={currentPage >= pageCount}
-                  onClick={() => setPage(currentPage + 1)}
+                  onClick={() => handlePageChange(currentPage + 1)}
                 >
                   Siguiente
                 </button>

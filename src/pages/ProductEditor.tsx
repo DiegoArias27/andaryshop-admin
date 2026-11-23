@@ -765,7 +765,10 @@ export default function ProductEditor() {
       <button
         type="button"
         className="icon-btn back-link"
-        onClick={() => navigate('/productos')}
+        // -1 (real back navigation), not a plain push to '/productos' — the
+        // list restores its scroll position/page only on an actual POP,
+        // same reasoning as the "Volver" button below.
+        onClick={() => navigate(-1)}
         aria-label="Volver"
       >
         <BackIcon />
@@ -905,7 +908,7 @@ export default function ProductEditor() {
       )}
 
       <div className="form-actions">
-        <button type="button" className="btn btn--ghost" onClick={() => navigate('/productos')}>
+        <button type="button" className="btn btn--ghost" onClick={() => navigate(-1)}>
           {isNewProduct ? 'Cancelar' : 'Volver'}
         </button>
         {!isNewProduct && (
