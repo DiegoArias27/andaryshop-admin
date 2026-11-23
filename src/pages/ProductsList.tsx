@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
-import { Link, useNavigate, useNavigationType } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Brand, Category, Collection, DiscountType, Product, ProductCollectionMembership } from '../api/types'
 import { formatPrice } from '../utils/currency'
@@ -53,7 +53,6 @@ function loadPersistedState(): Partial<PersistedListState> {
 
 export default function ProductsList() {
   const navigate = useNavigate()
-  const navigationType = useNavigationType()
   const settings = useAppSettings()
   const lowStockThreshold = settings?.low_stock_threshold ?? 5
   const [products, setProducts] = useState<Product[]>([])
@@ -141,13 +140,18 @@ export default function ProductsList() {
     return () => window.removeEventListener('scroll', saveScroll)
   }, [])
 
-  // Only on an actual back navigation (e.g. coming back from editing a
-  // product) — a fresh visit (clicking "Productos" in the sidebar) still
-  // starts at the top, same as any normal page load. Waits for `loading`
-  // to clear so the table has its real height before scrolling, not the
-  // much shorter skeleton's.
+  // Restores on every mount with a saved position, not just a POP
+  // navigation — a real back (Volver, the browser's own back button) is
+  // the normal way here, but gating strictly on that meant clicking
+  // "Productos" in the sidebar instead landed back at the top, which read
+  // as "sometimes it works, sometimes it doesn't" depending on which one
+  // was used. Waits for `loading` to clear so the table has its real
+  // height before scrolling, not the much shorter skeleton's, then keeps
+  // reapplying for a few frames — thumbnails/collection tags can still be
+  // settling the table's final height right after it first mounts, and a
+  // single scrollTo can land short if it fires before that's done.
   useEffect(() => {
-    if (navigationType !== 'POP' || loading) return
+    if (loading) return
     let raw: string | null = null
     try {
       raw = sessionStorage.getItem(SCROLL_KEY)
@@ -156,9 +160,24 @@ export default function ProductsList() {
     }
     const y = raw ? Number(raw) : NaN
     if (!Number.isFinite(y)) return
-    const frame = requestAnimationFrame(() => window.scrollTo(0, y))
-    return () => cancelAnimationFrame(frame)
-  }, [navigationType, loading])
+
+    let cancelled = false
+    let frame = 0
+    let attempts = 0
+    function apply() {
+      if (cancelled) return
+      window.scrollTo(0, y)
+      attempts++
+      if (attempts < 10 && Math.abs(window.scrollY - y) > 1) {
+        frame = requestAnimationFrame(apply)
+      }
+    }
+    frame = requestAnimationFrame(apply)
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
+  }, [loading])
 
   function handlePageChange(next: number) {
     setPage(next)
