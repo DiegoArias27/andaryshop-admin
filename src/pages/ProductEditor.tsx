@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Brand, Category, DiscountType, Product, ProductImage, Tag, WholesaleTier } from '../api/types'
+import type { Brand, Category, DiscountType, NeckType, Product, ProductImage, Tag, WholesaleTier } from '../api/types'
 import GalleryManager from '../components/GalleryManager'
 import ToggleSwitch from '../components/ToggleSwitch'
 import VariantsEditor, { type VariantsEditorHandle } from '../components/VariantsEditor'
@@ -53,6 +53,7 @@ const emptyForm = {
   price: '',
   brandId: '',
   categoryId: '',
+  neckType: '' as '' | NeckType,
   mainImageUrl: null as string | null,
   isNew: false,
   isFeatured: false,
@@ -105,6 +106,7 @@ function toApiPayload(f: FormState) {
     price: Number(f.price),
     brandId: f.brandId ? Number(f.brandId) : null,
     categoryId: f.categoryId ? Number(f.categoryId) : null,
+    neckType: f.neckType || null,
     isNew: f.isNew,
     isFeatured: f.isFeatured,
     isActive: f.isActive,
@@ -189,6 +191,7 @@ export default function ProductEditor() {
           price: data.price,
           brandId: data.brand_id ? String(data.brand_id) : '',
           categoryId: data.category_id ? String(data.category_id) : '',
+          neckType: data.neck_type ?? '',
           mainImageUrl: data.main_image_url,
           isNew: !!data.is_new,
           isFeatured: !!data.is_featured,
@@ -307,6 +310,22 @@ export default function ProductEditor() {
       toast('Categoría actualizada con éxito')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al guardar la categoría', 'error')
+    }
+  }
+
+  // Same immediate-save idea as handleCategoryChange — toggling the SAME
+  // value again clears it (a playera doesn't have to specify a cuello).
+  async function handleNeckTypeChange(neckType: NeckType) {
+    if (isNewProduct || !id) return
+    const next = form.neckType === neckType ? '' : neckType
+    const merged: FormState = { ...savedForm, neckType: next }
+    try {
+      await api.updateProduct(Number(id), toApiPayload(merged))
+      setForm((prev) => ({ ...prev, neckType: next }))
+      setSavedForm(merged)
+      toast('Cuello actualizado con éxito')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al guardar el cuello', 'error')
     }
   }
 
@@ -800,6 +819,24 @@ export default function ProductEditor() {
                     onClick={() => handleCategoryChange(String(c.id))}
                   >
                     {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {product && categories.find((c) => String(c.id) === form.categoryId)?.slug === 'playeras' && (
+            <div className="card">
+              <h2>Cuello</h2>
+              <div className="products-toolbar__checks">
+                {(['redondo', 'polo'] as const).map((nt) => (
+                  <button
+                    key={nt}
+                    type="button"
+                    className={`filter-check-pill ${form.neckType === nt ? 'filter-check-pill--active' : ''}`}
+                    onClick={() => handleNeckTypeChange(nt)}
+                  >
+                    {nt === 'redondo' ? 'Cuello redondo' : 'Tipo polo'}
                   </button>
                 ))}
               </div>

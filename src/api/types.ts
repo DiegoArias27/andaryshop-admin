@@ -164,9 +164,13 @@ export interface ProductCollectionMembership {
   discount_price: string | null
 }
 
+export type NeckType = 'redondo' | 'polo'
+
 export interface Product {
   id: number
   category_id: number | null
+  /** Playera-specific — null for every other category. */
+  neck_type: NeckType | null
   brand_id: number | null
   name: string
   slug: string
@@ -223,6 +227,7 @@ export interface ProductInput {
   price: number
   brandId: number | null
   categoryId: number | null
+  neckType?: NeckType | null
   mainImageUrl: string | null
   isNew: boolean
   isFeatured: boolean
