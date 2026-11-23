@@ -806,6 +806,59 @@ img {
   line-height: 1.2;
 }
 
+/* Kept small and out of the way — this is a daily work tool, not the
+   storefront, so just a thin twinkle under the brand/topbar instead of
+   anything louder. Same colors as the customer site's header lights. */
+.christmas-lights {
+  display: flex;
+  justify-content: space-evenly;
+  padding: 0 2px;
+  margin: 2px 0 22px;
+  pointer-events: none;
+}
+
+.christmas-lights__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffcf5c;
+  box-shadow: 0 0 4px 1px rgba(255, 207, 92, 0.65);
+  animation: christmas-light-twinkle 2.6s ease-in-out infinite;
+}
+
+.christmas-lights__dot:nth-child(3n+2) {
+  background: #ff6b6b;
+  box-shadow: 0 0 4px 1px rgba(255, 107, 107, 0.65);
+}
+
+.christmas-lights__dot:nth-child(3n) {
+  background: #5fd98a;
+  box-shadow: 0 0 4px 1px rgba(95, 217, 138, 0.65);
+}
+
+@keyframes christmas-light-twinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* The topbar (mobile/tablet only) is a slim sticky bar, not a tall column
+   like the sidebar — hang the strip off its bottom edge instead of taking
+   up space inside it. */
+.admin-topbar .christmas-lights {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  margin: 0;
+  padding: 0 14px;
+}
+
 .admin-sidebar__brand-text em {
   display: block;
   font-style: normal;

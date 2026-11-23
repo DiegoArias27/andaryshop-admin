@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import logo from '../../assets/AndaryShop.jpg'
 import BackToTop from '../BackToTop'
+import ChristmasLights from '../ChristmasLights'
 import HeldSalesWidget from '../HeldSalesWidget'
 import NotificationsBell from '../NotificationsBell'
 import UploadQueueWidget from '../UploadQueueWidget'
@@ -155,6 +156,7 @@ export default function AdminLayout() {
             <em>Admin</em>
           </span>
         </div>
+        <ChristmasLights />
         <nav className="admin-nav">
           <NavGroups collapsedGroups={collapsedGroups} onToggleGroup={toggleGroup} />
         </nav>
@@ -178,6 +180,7 @@ export default function AdminLayout() {
         <button className="icon-btn" onClick={logout} aria-label="Cerrar sesión">
           <LogoutIcon />
         </button>
+        <ChristmasLights />
       </header>
 
       {drawerOpen && (
