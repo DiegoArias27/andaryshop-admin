@@ -24,6 +24,43 @@ function totalStockOf(p: Product): number {
   return p.variants.reduce((sum, v) => sum + v.stock, 0)
 }
 
+/** Shown both above and below the table — with a long list, paging from
+ * the top shouldn't require scrolling all the way down first. */
+function PaginationBar({
+  total,
+  currentPage,
+  pageCount,
+  onChange,
+  position = 'bottom',
+}: {
+  total: number
+  currentPage: number
+  pageCount: number
+  onChange: (page: number) => void
+  position?: 'top' | 'bottom'
+}) {
+  return (
+    <div className={`pagination ${position === 'top' ? 'pagination--top' : ''}`}>
+      <span className="pagination__info">
+        {total} producto(s) · página {currentPage} de {pageCount}
+      </span>
+      <div className="pagination__controls">
+        <button type="button" className="btn btn--ghost btn--sm" disabled={currentPage <= 1} onClick={() => onChange(currentPage - 1)}>
+          Anterior
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--sm"
+          disabled={currentPage >= pageCount}
+          onClick={() => onChange(currentPage + 1)}
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const STATE_KEY = 'andary-products-list-state'
 const SCROLL_KEY = 'andary-products-list-scroll'
 
@@ -458,6 +495,15 @@ export default function ProductsList() {
 
       {!loading && !error && (
         <div className="table-wrap">
+          {filteredProducts.length > 0 && (
+            <PaginationBar
+              total={filteredProducts.length}
+              currentPage={currentPage}
+              pageCount={pageCount}
+              onChange={handlePageChange}
+              position="top"
+            />
+          )}
           <table className="admin-table">
             <thead>
               <tr>
@@ -592,29 +638,7 @@ export default function ProductsList() {
           )}
 
           {filteredProducts.length > 0 && (
-            <div className="pagination">
-              <span className="pagination__info">
-                {filteredProducts.length} producto(s) · página {currentPage} de {pageCount}
-              </span>
-              <div className="pagination__controls">
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  disabled={currentPage <= 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  disabled={currentPage >= pageCount}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
+            <PaginationBar total={filteredProducts.length} currentPage={currentPage} pageCount={pageCount} onChange={handlePageChange} />
           )}
         </div>
       )}

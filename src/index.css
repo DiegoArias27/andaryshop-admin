@@ -1601,6 +1601,10 @@ img {
   padding: 16px 4px 4px;
 }
 
+.pagination--top {
+  padding: 4px 4px 16px;
+}
+
 .pagination__info {
   font-size: 16px;
   color: var(--gray-600);

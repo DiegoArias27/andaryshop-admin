@@ -24,6 +24,17 @@ import RestockHistory from './pages/RestockHistory'
 import Settings from './pages/Settings'
 import NotificationsHistory from './pages/NotificationsHistory'
 
+// The browser's own automatic scroll restoration on a back/forward
+// navigation races against ProductsList's own manual one (sessionStorage +
+// a retry loop waiting for the real table to lay out) — whichever wins
+// depends on timing, so the page could land scrolled anywhere, including
+// partway between the two. Turning this off hands scroll restoration
+// entirely to the app, which is the only one that actually knows when the
+// data has loaded.
+if ('scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { token } = useAuth()
   if (!token) return <Navigate to="/login" replace />
