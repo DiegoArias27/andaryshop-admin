@@ -251,9 +251,15 @@ export default function StockLookup() {
     // A búsqueda pick (outside reabastecer) goes straight into la venta
     // actual with nothing else to confirm here — bring that cart into view
     // instead of leaving the admin looking at the same results list with no
-    // visible sign anything happened.
+    // visible sign anything happened. Deferred a frame: setSearchQuery('')
+    // above collapses the results list, which shortens everything above the
+    // cart — scrolling before that layout change actually lands would
+    // target the OLD (taller) position and could land short/wrong once the
+    // page reflows right after.
     if (mode === 'search' && !restockMode) {
-      cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      requestAnimationFrame(() => {
+        cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
     }
   }
 
