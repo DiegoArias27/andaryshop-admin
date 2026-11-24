@@ -21,6 +21,16 @@ export function BackIcon(props: IconProps) {
   )
 }
 
+export function PipetteIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M18.5 2.5 21.5 5.5 18 9 15 6Z" />
+      <path d="M15 6 6 15l-2.5 5.5L9 18 18 9" />
+      <path d="M3.5 20.5 6 18" />
+    </svg>
+  )
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

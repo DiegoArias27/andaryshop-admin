@@ -6,10 +6,14 @@ import { ChevronRightIcon, CopyIcon, DragHandleIcon } from './icons'
 import { useToast } from '../hooks/useToast'
 import { useConfirm } from '../hooks/useConfirm'
 import NumberField from './NumberField'
+import ColorPicker from './ColorPicker'
 
 interface VariantsEditorProps {
   productId: number
   initialVariants: ProductVariant[]
+  /** The product's own cover photo, if it has one yet — passed through to
+   * ColorPicker so it can offer "tomar color de la foto" here too. */
+  mainImageUrl?: string | null
   /** Fires whenever there are unsaved changes to commit/cancel — lets the
    * parent show its own Guardar/Cancelar bar for this section. */
   onDirtyChange?: (dirty: boolean) => void
@@ -28,6 +32,11 @@ export interface VariantsEditorHandle {
 
 const emptyDraft = { size: '', colorName: '', colorHex: '#0d0d0d', barcode: '', stock: '' }
 const LOW_STOCK_THRESHOLD = 5
+// Unitalla stays in the list alongside the real size range — caps
+// (Gorras) and other one-size items already use it for real, so
+// excluding it would leave their existing/future variants with no
+// matching option.
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unitalla'] as const
 
 function sanitizeCode(value: string, len: number): string {
   const cleaned = value
@@ -56,7 +65,7 @@ function suggestBarcode(productId: number, size: string, colorName: string, take
 }
 
 const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(function VariantsEditor(
-  { productId, initialVariants, onDirtyChange, onVariantsChange },
+  { productId, initialVariants, mainImageUrl, onDirtyChange, onVariantsChange },
   ref
 ) {
   const [baseline, setBaseline] = useState<ProductVariant[]>(initialVariants)
@@ -209,15 +218,51 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
     }
   }
 
-  // An existing row's barcode has no auto-fill effect like the "add new"
-  // draft does — only guard against actually saving one blank (which would
-  // also collide under the column's UNIQUE constraint the moment a second
-  // row was ever left blank too).
+  // Talla/color/barcode now save themselves on blur too, same immediate
+  // spirit as stock above — moving to the NEXT field in the row (or
+  // clicking away) is what actually persists the one just left, instead
+  // of needing a separate "Guardar tallas e inventario" click afterward.
+  // `overrides` lets handleBarcodeBlur below fold its own auto-suggested
+  // value in before saving, without waiting on React's async state update
+  // to see it first. Quiet on success (a toast per field, for a row with
+  // several edited at once, would pile up fast) — only an actual failure
+  // surfaces anything, same bar as the rest of this page's autosaves.
+  async function saveVariantField(variantId: number, overrides: Partial<ProductVariant> = {}) {
+    const currentBase = variants.find((x) => x.id === variantId)
+    const original = baseline.find((x) => x.id === variantId)
+    if (!currentBase || !original) return
+    const current = { ...currentBase, ...overrides }
+    if (
+      current.size === original.size &&
+      current.color_name === original.color_name &&
+      current.color_hex === original.color_hex &&
+      current.barcode === original.barcode
+    ) {
+      return
+    }
+    try {
+      const updated = await saveVariantFields(current)
+      setVariants((prev) => prev.map((x) => (x.id === variantId ? updated : x)))
+      setBaseline((prev) => prev.map((x) => (x.id === variantId ? updated : x)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar la variante')
+      setVariants((prev) => prev.map((x) => (x.id === variantId ? original : x)))
+    }
+  }
+
+  // An existing row's barcode also has an auto-fill effect like the "add
+  // new" draft does — only guard against actually saving one blank (which
+  // would also collide under the column's UNIQUE constraint the moment a
+  // second row was ever left blank too).
   function handleBarcodeBlur(v: ProductVariant) {
-    if (v.barcode.trim()) return
+    if (v.barcode.trim()) {
+      saveVariantField(v.id)
+      return
+    }
     const taken = new Set(variants.filter((x) => x.id !== v.id).map((x) => x.barcode))
     const suggestion = suggestBarcode(productId, v.size, v.color_name, taken)
     updateVariantField(v.id, 'barcode', suggestion)
+    saveVariantField(v.id, { barcode: suggestion })
   }
 
   // Immediate (not part of the Guardar batch) — a confirm dialog first is
@@ -317,6 +362,46 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
       {open && (
       <>
+      <div className="variant-form">
+          <select value={draft.size} onChange={(e) => setDraft((d) => ({ ...d, size: e.target.value }))}>
+            <option value="" disabled>
+              Talla…
+            </option>
+            {SIZES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Color (Negro…)"
+            value={draft.colorName}
+            onChange={(e) => setDraft((d) => ({ ...d, colorName: e.target.value }))}
+          />
+          <ColorPicker
+            value={draft.colorHex}
+            photoUrl={mainImageUrl}
+            onChange={(hex) => setDraft((d) => ({ ...d, colorHex: hex }))}
+          />
+          <input
+            placeholder="Código de barras (automático)"
+            value={draft.barcode}
+            onChange={(e) => {
+              setBarcodeManuallyEdited(true)
+              setDraft((d) => ({ ...d, barcode: e.target.value }))
+            }}
+          />
+          <input
+            type="number" inputMode="numeric"
+            min="0"
+            placeholder="Stock — se agrega sola al terminar"
+            value={draft.stock}
+            onChange={(e) => setDraft((d) => ({ ...d, stock: e.target.value }))}
+            onBlur={commitDraft}
+            onKeyDown={handleStockKeyDown}
+          />
+      </div>
+
       <div className="editable-card__content">
         <div className="table-wrap">
           <table className="admin-table">
@@ -354,24 +439,38 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                   </span>
                 </td>
                 <td data-label="Talla">
-                  <input
+                  <select
                     value={v.size}
                     className="variant-input variant-input--size"
-                    onChange={(e) => updateVariantField(v.id, 'size', e.target.value)}
-                  />
+                    onChange={(e) => {
+                      updateVariantField(v.id, 'size', e.target.value)
+                      saveVariantField(v.id, { size: e.target.value })
+                    }}
+                  >
+                    {!SIZES.includes(v.size as (typeof SIZES)[number]) && v.size && (
+                      <option value={v.size}>{v.size}</option>
+                    )}
+                    {SIZES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td data-label="Color">
                   <div className="variant-color-field">
-                    <input
-                      type="color"
-                      className="variant-color-swatch"
+                    <ColorPicker
+                      compact
                       value={v.color_hex}
-                      onChange={(e) => updateVariantField(v.id, 'color_hex', e.target.value)}
+                      photoUrl={mainImageUrl}
+                      onChange={(hex) => updateVariantField(v.id, 'color_hex', hex)}
+                      onCommit={(hex) => saveVariantField(v.id, { color_hex: hex })}
                     />
                     <input
                       value={v.color_name}
                       className="variant-input"
                       onChange={(e) => updateVariantField(v.id, 'color_name', e.target.value)}
+                      onBlur={() => saveVariantField(v.id)}
                     />
                   </div>
                 </td>
@@ -443,42 +542,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
           </tbody>
           </table>
         </div>
-      </div>
-
-      <div className="variant-form">
-          <input
-            placeholder="Talla (S, M, L…)"
-            value={draft.size}
-            onChange={(e) => setDraft((d) => ({ ...d, size: e.target.value }))}
-          />
-          <input
-            placeholder="Color (Negro…)"
-            value={draft.colorName}
-            onChange={(e) => setDraft((d) => ({ ...d, colorName: e.target.value }))}
-          />
-          <input
-            type="color"
-            className="variant-color-swatch"
-            value={draft.colorHex}
-            onChange={(e) => setDraft((d) => ({ ...d, colorHex: e.target.value }))}
-          />
-          <input
-            placeholder="Código de barras (automático)"
-            value={draft.barcode}
-            onChange={(e) => {
-              setBarcodeManuallyEdited(true)
-              setDraft((d) => ({ ...d, barcode: e.target.value }))
-            }}
-          />
-          <input
-            type="number" inputMode="numeric"
-            min="0"
-            placeholder="Stock — se agrega sola al terminar"
-            value={draft.stock}
-            onChange={(e) => setDraft((d) => ({ ...d, stock: e.target.value }))}
-            onBlur={commitDraft}
-            onKeyDown={handleStockKeyDown}
-          />
       </div>
 
       {error && <p className="form-error">{error}</p>}

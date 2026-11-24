@@ -863,6 +863,7 @@ export default function ProductEditor() {
                 ref={variantsRef}
                 productId={product.id}
                 initialVariants={variants}
+                mainImageUrl={product.main_image_url}
                 onDirtyChange={setVariantsEditing}
                 onVariantsChange={setVariants}
               />

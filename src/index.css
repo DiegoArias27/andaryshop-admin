@@ -2615,6 +2615,91 @@ img {
   border-color: transparent;
 }
 
+.color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.color-picker__sample-btn {
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--gray-200);
+  color: var(--gray-600);
+  flex-shrink: 0;
+}
+
+.color-picker__sample-btn:hover {
+  background: var(--gray-100);
+  color: var(--black);
+}
+
+.color-picker__recent {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: 180px;
+}
+
+.color-picker__swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(13, 13, 13, 0.15);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.color-picker__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 13, 13, 0.7);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.color-picker__sampler {
+  position: relative;
+  background: var(--white);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.color-picker__sampler-hint {
+  font-size: 15px;
+  color: var(--gray-600);
+  margin: 0;
+  text-align: center;
+  max-width: 320px;
+}
+
+.color-picker__sampler-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.color-picker__canvas {
+  max-width: 100%;
+  max-height: 70vh;
+  cursor: crosshair;
+  border-radius: 8px;
+  display: block;
+}
+
 .variant-form {
   display: flex;
   flex-wrap: wrap;

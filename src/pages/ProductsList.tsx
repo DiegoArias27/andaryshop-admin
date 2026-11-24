@@ -25,7 +25,7 @@ function totalStockOf(p: Product): number {
   return p.variants.reduce((sum, v) => sum + v.stock, 0)
 }
 
-const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unitalla'] as const
 
 /** Shown both above and below the table — with a long list, paging from
  * the top shouldn't require scrolling all the way down first. */
