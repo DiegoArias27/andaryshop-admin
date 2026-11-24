@@ -156,22 +156,6 @@ export default function ProductEditor() {
   const [variantsEditing, setVariantsEditing] = useState(false)
   const { toast } = useToast()
 
-  // A brand-less draft is a dead end for the catalog's own brand filter, and
-  // one with no talla/color at all can't actually be sold — block leaving a
-  // brand-new product (by either back control) until both are there,
-  // instead of letting it get abandoned half-set-up.
-  function handleBack() {
-    if (isNewProduct && !form.brandId) {
-      toast('Elige una marca antes de salir', 'error')
-      return
-    }
-    if (isNewProduct && variants.length === 0) {
-      toast('Agrega al menos una talla antes de salir', 'error')
-      return
-    }
-    navigate(-1)
-  }
-
   // A fresh draft (just created from a category switch or "Agregar otro
   // producto igual") keeps its auto-suggested name/price live until the
   // admin actually types over one by hand. An existing product being
@@ -179,6 +163,26 @@ export default function ProductEditor() {
   // set, even if they happen to match the pattern, and tweaking the brand
   // to fix something unrelated shouldn't silently rewrite them.
   const justCreated = !!(location.state as { justCreated?: boolean } | null)?.justCreated
+
+  // A brand-less draft is a dead end for the catalog's own brand filter, and
+  // one with no talla/color at all can't actually be sold — block leaving a
+  // brand-new product (by either back control) until both are there,
+  // instead of letting it get abandoned half-set-up. Keyed on justCreated
+  // (not isNewProduct — that flips false the instant createDraft's own
+  // navigate() lands on /productos/:id, which happens right away, well
+  // before the admin has had any chance to actually set either one) so the
+  // check stays live for this whole first sitting.
+  function handleBack() {
+    if (justCreated && !form.brandId) {
+      toast('Elige una marca antes de salir', 'error')
+      return
+    }
+    if (justCreated && variants.length === 0) {
+      toast('Agrega al menos una talla antes de salir', 'error')
+      return
+    }
+    navigate(-1)
+  }
   const [nameManuallyEdited, setNameManuallyEdited] = useState(!justCreated)
   const [priceManuallyEdited, setPriceManuallyEdited] = useState(!justCreated)
 
