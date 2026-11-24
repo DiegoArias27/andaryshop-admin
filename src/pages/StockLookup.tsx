@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEven
 import { Link } from 'react-router-dom'
 import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
 import { productGallery } from '../utils/productGallery'
+import Modal from '../components/Modal'
 import NumberField from '../components/NumberField'
 import { api } from '../api/client'
 import type { Collection, Customer, NeckType, PaymentMethod, Product, ProductVariant, VariantByBarcode, WholesaleTier } from '../api/types'
@@ -119,6 +120,12 @@ export default function StockLookup() {
   const [totalOverride, setTotalOverride] = useState<number | null>(null)
   const [viewerImages, setViewerImages] = useState<LightboxImage[] | null>(null)
   const [completingSale, setCompletingSale] = useState(false)
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  // How much cash the customer is handing over — only asked for payment
+  // method 'cash', to compute the change owed back before the sale is
+  // actually submitted.
+  const [cashReceived, setCashReceived] = useState('')
+  const cartRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -241,6 +248,13 @@ export default function StockLookup() {
     handleDetected(buildVariantResult(product, variant))
     setSearchQuery('')
     setExpandedProductId(null)
+    // A búsqueda pick (outside reabastecer) goes straight into la venta
+    // actual with nothing else to confirm here — bring that cart into view
+    // instead of leaving the admin looking at the same results list with no
+    // visible sign anything happened.
+    if (mode === 'search' && !restockMode) {
+      cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   async function doSearch(code: string) {
@@ -908,12 +922,17 @@ export default function StockLookup() {
       toast(`Venta #${order.id} completada — ${formatPrice(saleTotal)}`)
       clearSale()
       reloadProducts()
+      setShowCompleteModal(false)
+      setCashReceived('')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Error al completar la venta', 'error')
     } finally {
       setCompletingSale(false)
     }
   }
+
+  const changeDue = Number(cashReceived) - saleTotal
+  const cashCoversTotal = paymentMethod !== 'cash' || (cashReceived !== '' && changeDue >= 0)
 
   return (
     <div className="page-block">
@@ -1343,7 +1362,7 @@ export default function StockLookup() {
       </div>
       </div>
 
-      <div className="pos-cart">
+      <div className="pos-cart" ref={cartRef}>
         <div className="pos-cart__header">
           <h2 className="section-title-icon">
             <CartIcon /> Venta actual
@@ -1544,51 +1563,6 @@ export default function StockLookup() {
                 />
               </label>
 
-              <div className="pos-payment-method">
-                <span className="pos-payment-method__label">Forma de pago</span>
-                <div className="pos-payment-method__row">
-                  <button
-                    type="button"
-                    className={`pos-payment-method__btn ${paymentMethod === 'cash' ? 'pos-payment-method__btn--active' : ''}`}
-                    onClick={() => setPaymentMethod('cash')}
-                  >
-                    <CashIcon width={16} height={16} /> Efectivo
-                  </button>
-                  <button
-                    type="button"
-                    className={`pos-payment-method__btn ${paymentMethod === 'debit' || paymentMethod === 'credit' ? 'pos-payment-method__btn--active' : ''}`}
-                    onClick={() => setPaymentMethod((pm) => (pm === 'debit' || pm === 'credit' ? pm : 'credit'))}
-                  >
-                    <CardIcon width={16} height={16} /> Tarjeta
-                  </button>
-                  <button
-                    type="button"
-                    className={`pos-payment-method__btn ${paymentMethod === 'transfer' ? 'pos-payment-method__btn--active' : ''}`}
-                    onClick={() => setPaymentMethod('transfer')}
-                  >
-                    <TransferIcon width={16} height={16} /> Transferencia
-                  </button>
-                </div>
-                {(paymentMethod === 'debit' || paymentMethod === 'credit') && (
-                  <div className="pos-payment-method__row pos-payment-method__row--sub">
-                    <button
-                      type="button"
-                      className={`pos-payment-method__btn pos-payment-method__btn--sm ${paymentMethod === 'debit' ? 'pos-payment-method__btn--active' : ''}`}
-                      onClick={() => setPaymentMethod('debit')}
-                    >
-                      Débito
-                    </button>
-                    <button
-                      type="button"
-                      className={`pos-payment-method__btn pos-payment-method__btn--sm ${paymentMethod === 'credit' ? 'pos-payment-method__btn--active' : ''}`}
-                      onClick={() => setPaymentMethod('credit')}
-                    >
-                      Crédito
-                    </button>
-                  </div>
-                )}
-              </div>
-
               <label className="pos-cart__total">
                 <span>Total a pagar{totalOverride != null ? ' (editado a mano)' : ''}</span>
                 <NumberField
@@ -1604,13 +1578,112 @@ export default function StockLookup() {
               <button type="button" className="btn btn--ghost" onClick={handleHoldSale} disabled={completingSale}>
                 Poner en espera
               </button>
-              <button type="button" className="btn btn--accent" onClick={handleCompleteSale} disabled={completingSale}>
-                {completingSale ? 'Procesando…' : 'Completar venta'}
+              <button
+                type="button"
+                className="btn btn--accent"
+                onClick={() => {
+                  setCashReceived('')
+                  setShowCompleteModal(true)
+                }}
+                disabled={completingSale}
+              >
+                Completar venta
               </button>
             </div>
           </>
         )}
       </div>
+
+      {showCompleteModal && (
+        <Modal title="Confirmar venta" onClose={() => setShowCompleteModal(false)} maxWidth={420}>
+          <p className="pos-cart__total" style={{ marginBottom: 12 }}>
+            <span>Total a pagar</span>
+            <strong style={{ fontSize: 22 }}>{formatPrice(saleTotal)}</strong>
+          </p>
+
+          <div className="pos-payment-method">
+            <span className="pos-payment-method__label">Forma de pago</span>
+            <div className="pos-payment-method__row">
+              <button
+                type="button"
+                className={`pos-payment-method__btn ${paymentMethod === 'cash' ? 'pos-payment-method__btn--active' : ''}`}
+                onClick={() => setPaymentMethod('cash')}
+              >
+                <CashIcon width={16} height={16} /> Efectivo
+              </button>
+              <button
+                type="button"
+                className={`pos-payment-method__btn ${paymentMethod === 'debit' || paymentMethod === 'credit' ? 'pos-payment-method__btn--active' : ''}`}
+                onClick={() => setPaymentMethod((pm) => (pm === 'debit' || pm === 'credit' ? pm : 'credit'))}
+              >
+                <CardIcon width={16} height={16} /> Tarjeta
+              </button>
+              <button
+                type="button"
+                className={`pos-payment-method__btn ${paymentMethod === 'transfer' ? 'pos-payment-method__btn--active' : ''}`}
+                onClick={() => setPaymentMethod('transfer')}
+              >
+                <TransferIcon width={16} height={16} /> Transferencia
+              </button>
+            </div>
+            {(paymentMethod === 'debit' || paymentMethod === 'credit') && (
+              <div className="pos-payment-method__row pos-payment-method__row--sub">
+                <button
+                  type="button"
+                  className={`pos-payment-method__btn pos-payment-method__btn--sm ${paymentMethod === 'debit' ? 'pos-payment-method__btn--active' : ''}`}
+                  onClick={() => setPaymentMethod('debit')}
+                >
+                  Débito
+                </button>
+                <button
+                  type="button"
+                  className={`pos-payment-method__btn pos-payment-method__btn--sm ${paymentMethod === 'credit' ? 'pos-payment-method__btn--active' : ''}`}
+                  onClick={() => setPaymentMethod('credit')}
+                >
+                  Crédito
+                </button>
+              </div>
+            )}
+          </div>
+
+          {paymentMethod === 'cash' && (
+            <>
+              <label className="form-field" style={{ marginTop: 12 }}>
+                ¿Con cuánto paga?
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="$0.00"
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(e.target.value)}
+                  autoFocus
+                />
+              </label>
+              {cashReceived !== '' && (
+                <p className={`form-field__note ${changeDue < 0 ? 'form-field__note--charge' : 'form-field__note--refund'}`}>
+                  {changeDue < 0 ? `Faltan ${formatPrice(-changeDue)}.` : `Cambio: ${formatPrice(changeDue)}`}
+                </p>
+              )}
+            </>
+          )}
+
+          <div className="form-actions" style={{ marginTop: 16 }}>
+            <button type="button" className="btn btn--ghost" onClick={() => setShowCompleteModal(false)} disabled={completingSale}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn--accent"
+              onClick={handleCompleteSale}
+              disabled={completingSale || !cashCoversTotal}
+            >
+              {completingSale ? 'Procesando…' : 'Confirmar venta'}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {viewerImages && viewerImages.length > 0 && (
         <ImageLightbox images={viewerImages} initialIndex={0} onClose={() => setViewerImages(null)} />
