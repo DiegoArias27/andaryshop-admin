@@ -50,6 +50,16 @@ interface ColorPickerProps {
    * since picking a fresh color from scratch is exactly where reusing a
    * recent one matters most. */
   compact?: boolean
+  /** Named swatches to show alongside the plain (hex-only) recent-colors
+   * row — e.g. every color already in use by some product in the store,
+   * so reusing one of those doesn't need a whole separate picker of its
+   * own. Shown with the color's actual name (as a tooltip), not just its
+   * hex, and reported through onPickNamed below instead of onCommit so the
+   * name travels along with the hex. */
+  extraSwatches?: { hex: string; name: string }[]
+  /** Fires when one of extraSwatches is clicked — hex AND name together,
+   * since onChange/onCommit above only ever carry a hex. */
+  onPickNamed?: (hex: string, name: string) => void
 }
 
 /** A plain <input type="color"> plus two things the native picker doesn't
@@ -59,7 +69,7 @@ interface ColorPickerProps {
  * "tomar de la foto" sampler that reads a single pixel's color straight
  * off it via canvas, which is a much more direct way to match a garment's
  * actual color than freehand in a picker. */
-export default function ColorPicker({ value, onChange, onCommit, photoUrl, compact }: ColorPickerProps) {
+export default function ColorPicker({ value, onChange, onCommit, photoUrl, compact, extraSwatches = [], onPickNamed }: ColorPickerProps) {
   const [recent, setRecent] = useState<string[]>(loadRecentColors)
   const [sampling, setSampling] = useState(false)
   const [sampleError, setSampleError] = useState(false)
@@ -69,6 +79,11 @@ export default function ColorPicker({ value, onChange, onCommit, photoUrl, compa
     onChange(hex)
     setRecent(rememberColor(hex))
     onCommit?.(hex)
+  }
+
+  function commitNamed(hex: string, name: string) {
+    commit(hex)
+    onPickNamed?.(hex, name)
   }
 
   useEffect(() => {
@@ -125,8 +140,19 @@ export default function ColorPicker({ value, onChange, onCommit, photoUrl, compa
           <PipetteIcon width={14} height={14} />
         </button>
       )}
-      {!compact && recent.length > 0 && (
+      {!compact && (extraSwatches.length > 0 || recent.length > 0) && (
         <div className="color-picker__recent">
+          {extraSwatches.map((c) => (
+            <button
+              key={`extra-${c.hex}-${c.name}`}
+              type="button"
+              className="color-picker__swatch"
+              style={{ background: c.hex }}
+              onClick={() => commitNamed(c.hex, c.name)}
+              aria-label={`Usar color ${c.name}`}
+              title={c.name}
+            />
+          ))}
           {recent.map((c) => (
             <button
               key={c}

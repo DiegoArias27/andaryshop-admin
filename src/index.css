@@ -2700,19 +2700,6 @@ img {
   display: block;
 }
 
-.variant-form__color-select {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-  font-size: 15px;
-  color: var(--gray-600);
-}
-
-.variant-form__color-select select {
-  font-size: 15px;
-}
-
 .variant-form {
   display: flex;
   flex-wrap: wrap;
@@ -5367,6 +5354,11 @@ img {
   position: fixed;
   top: 20px;
   right: 20px;
+  /* Needs to beat .image-lightbox__stage in paint order — with the
+     overlay's padding trimmed down, the stage now reaches close enough to
+     this corner that without this, taps here were landing on the stage
+     (which sits later in the DOM) instead of the button underneath it. */
+  z-index: 2;
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
 }
@@ -5384,6 +5376,7 @@ img {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  z-index: 2;
 }
 
 .image-viewer-overlay__nav:hover {

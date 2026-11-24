@@ -382,28 +382,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
       {open && (
       <>
-      {storeColors.length > 0 && (
-        <label className="variant-form__color-select">
-          Usar un color ya existente en la tienda
-          <select
-            value=""
-            onChange={(e) => {
-              const [hex, name] = e.target.value.split('|')
-              if (hex && name) setDraft((d) => ({ ...d, colorHex: hex, colorName: name }))
-            }}
-          >
-            <option value="" disabled>
-              Elige un color…
-            </option>
-            {storeColors.map((c) => (
-              <option key={`${c.hex}-${c.name}`} value={`${c.hex}|${c.name}`}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
       <div className="variant-form">
           <select value={draft.size} onChange={(e) => setDraft((d) => ({ ...d, size: e.target.value }))}>
             <option value="" disabled>
@@ -418,7 +396,9 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
           <ColorPicker
             value={draft.colorHex}
             photoUrl={mainImageUrl}
+            extraSwatches={storeColors}
             onChange={(hex) => setDraft((d) => ({ ...d, colorHex: hex }))}
+            onPickNamed={(hex, name) => setDraft((d) => ({ ...d, colorHex: hex, colorName: name }))}
           />
           <input
             placeholder="Color (Negro…)"
