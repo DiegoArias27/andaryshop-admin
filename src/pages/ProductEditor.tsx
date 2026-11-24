@@ -156,12 +156,17 @@ export default function ProductEditor() {
   const [variantsEditing, setVariantsEditing] = useState(false)
   const { toast } = useToast()
 
-  // A brand-less draft is a dead end for the catalog's own brand filter —
-  // block leaving a brand-new product (by either back control) until one
-  // is actually chosen, instead of letting it get abandoned without one.
+  // A brand-less draft is a dead end for the catalog's own brand filter, and
+  // one with no talla/color at all can't actually be sold — block leaving a
+  // brand-new product (by either back control) until both are there,
+  // instead of letting it get abandoned half-set-up.
   function handleBack() {
     if (isNewProduct && !form.brandId) {
       toast('Elige una marca antes de salir', 'error')
+      return
+    }
+    if (isNewProduct && variants.length === 0) {
+      toast('Agrega al menos una talla antes de salir', 'error')
       return
     }
     navigate(-1)
