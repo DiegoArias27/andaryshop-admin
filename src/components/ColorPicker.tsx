@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { CloseIcon, PipetteIcon } from './icons'
+import { ChevronRightIcon, CloseIcon, PipetteIcon } from './icons'
 
 const RECENT_COLORS_KEY = 'andary-admin-recent-colors'
 const MAX_RECENT = 12
@@ -50,21 +50,22 @@ interface ColorPickerProps {
    * since picking a fresh color from scratch is exactly where reusing a
    * recent one matters most. */
   compact?: boolean
-  /** Named swatches to show alongside the plain (hex-only) recent-colors
-   * row — e.g. every color already in use by some product in the store,
-   * so reusing one of those doesn't need a whole separate picker of its
-   * own. Shown with the color's actual name (as a tooltip), not just its
-   * hex, and reported through onPickNamed below instead of onCommit so the
-   * name travels along with the hex. */
+  /** Named colors offered through the dropdown next to the big swatch —
+   * e.g. every color already in use by some product in the store, so
+   * reusing one of those doesn't need a whole separate picker of its own.
+   * Unlike the plain (hex-only) recent-colors row, each one shows its
+   * actual name right in the list — picking one reports hex AND name
+   * together through onPickNamed below, since onChange/onCommit only ever
+   * carry a hex. */
   extraSwatches?: { hex: string; name: string }[]
-  /** Fires when one of extraSwatches is clicked — hex AND name together,
-   * since onChange/onCommit above only ever carry a hex. */
   onPickNamed?: (hex: string, name: string) => void
 }
 
-/** A plain <input type="color"> plus two things the native picker doesn't
- * give you: a row of recently-used colors (shared across every product,
- * localStorage-backed) to reuse a shade in one click instead of hunting
+/** A plain <input type="color"> plus three things the native picker doesn't
+ * give you: a dropdown of named colors (e.g. every color already used
+ * somewhere in the store) right next to the swatch, a row of recently-used
+ * colors (shared across every product, localStorage-backed, hex only — no
+ * name to show for those) to reuse a shade in one click instead of hunting
  * for the exact same tone again, and — when this product has a photo — a
  * "tomar de la foto" sampler that reads a single pixel's color straight
  * off it via canvas, which is a much more direct way to match a garment's
@@ -73,7 +74,9 @@ export default function ColorPicker({ value, onChange, onCommit, photoUrl, compa
   const [recent, setRecent] = useState<string[]>(loadRecentColors)
   const [sampling, setSampling] = useState(false)
   const [sampleError, setSampleError] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   function commit(hex: string) {
     onChange(hex)
@@ -84,7 +87,17 @@ export default function ColorPicker({ value, onChange, onCommit, photoUrl, compa
   function commitNamed(hex: string, name: string) {
     commit(hex)
     onPickNamed?.(hex, name)
+    setDropdownOpen(false)
   }
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function handleDocumentMouseDown(e: MouseEvent) {
+      if (!dropdownRef.current?.contains(e.target as Node)) setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handleDocumentMouseDown)
+    return () => document.removeEventListener('mousedown', handleDocumentMouseDown)
+  }, [dropdownOpen])
 
   useEffect(() => {
     if (!sampling || !photoUrl) return
@@ -129,6 +142,31 @@ export default function ColorPicker({ value, onChange, onCommit, photoUrl, compa
         onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => commit(e.target.value)}
       />
+      {extraSwatches.length > 0 && (
+        <div className="color-picker__dropdown" ref={dropdownRef}>
+          <button
+            type="button"
+            className="icon-btn color-picker__dropdown-btn"
+            onClick={() => setDropdownOpen((v) => !v)}
+            aria-label="Elegir un color ya usado en la tienda"
+            title="Elegir un color ya usado en la tienda"
+          >
+            <ChevronRightIcon width={14} height={14} style={{ transform: 'rotate(90deg)' }} />
+          </button>
+          {dropdownOpen && (
+            <ul className="color-picker__dropdown-list">
+              {extraSwatches.map((c) => (
+                <li key={`${c.hex}-${c.name}`}>
+                  <button type="button" onClick={() => commitNamed(c.hex, c.name)}>
+                    <span className="color-picker__dropdown-swatch" style={{ background: c.hex }} />
+                    {c.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {photoUrl && (
         <button
           type="button"
@@ -140,19 +178,8 @@ export default function ColorPicker({ value, onChange, onCommit, photoUrl, compa
           <PipetteIcon width={14} height={14} />
         </button>
       )}
-      {!compact && (extraSwatches.length > 0 || recent.length > 0) && (
+      {!compact && recent.length > 0 && (
         <div className="color-picker__recent">
-          {extraSwatches.map((c) => (
-            <button
-              key={`extra-${c.hex}-${c.name}`}
-              type="button"
-              className="color-picker__swatch"
-              style={{ background: c.hex }}
-              onClick={() => commitNamed(c.hex, c.name)}
-              aria-label={`Usar color ${c.name}`}
-              title={c.name}
-            />
-          ))}
           {recent.map((c) => (
             <button
               key={c}
