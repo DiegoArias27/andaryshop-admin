@@ -2562,6 +2562,12 @@ img {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.variant-color-field > input {
+  flex: 1 1 120px;
+  min-width: 0;
 }
 
 .variant-barcode-cell {
