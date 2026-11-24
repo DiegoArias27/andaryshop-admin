@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { Collection, Order, Product, ProductVariant, ReturnType } from '../api/types'
 import Modal from './Modal'
+import ImageLightbox, { type LightboxImage } from './ImageLightbox'
+import { productGallery } from '../utils/productGallery'
 import { SearchIcon } from './icons'
 import { useToast } from '../hooks/useToast'
 import { formatPrice } from '../utils/currency'
@@ -37,14 +39,22 @@ function collectionMatchesProduct(collection: Collection, product: Product): boo
 }
 
 /** A small inline search-and-pick panel for choosing the replacement
- * product + variant in an exchange — mirrors Orders.tsx's GiftProductPicker. */
-function ReplacementPicker({ onPick, onCancel }: { onPick: (product: Product, variant: ProductVariant) => void; onCancel: () => void }) {
-  const [products, setProducts] = useState<Product[] | null>(null)
+ * product + variant in an exchange — mirrors Orders.tsx's GiftProductPicker.
+ * Row layout matches the "¿qué prenda cambiar?" picker above it (image +
+ * name + stock/size options), including opening the full gallery on a
+ * click on the photo. */
+function ReplacementPicker({
+  products,
+  onPick,
+  onCancel,
+  onViewImage,
+}: {
+  products: Product[] | null
+  onPick: (product: Product, variant: ProductVariant) => void
+  onCancel: () => void
+  onViewImage: (images: LightboxImage[]) => void
+}) {
   const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    api.getProducts().then(setProducts).catch(() => setProducts([]))
-  }, [])
 
   const term = search.trim().toLowerCase()
   const filtered = (products ?? []).filter((p) => !term || p.name.toLowerCase().includes(term))
@@ -64,25 +74,38 @@ function ReplacementPicker({ onPick, onCancel }: { onPick: (product: Product, va
         />
       </div>
       {!products && <GiftPickerSkeleton />}
-      <div className="gift-picker__list">
+      <div className="exchange-item-picker">
         {filtered.slice(0, 30).map((p) => (
-          <div key={p.id} className="gift-picker__product">
-            {p.main_image_url ? <img src={p.main_image_url} alt="" /> : <div className="gift-picker__thumb" />}
-            <span className="gift-picker__name">{p.name}</span>
-            <div className="gift-picker__variants">
-              {p.variants.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  disabled={v.stock <= 0}
-                  title={v.stock <= 0 ? 'Sin stock' : undefined}
-                  onClick={() => onPick(p, v)}
-                >
-                  {v.size} / {v.color_name} ({v.stock})
-                </button>
-              ))}
-            </div>
+          <div key={p.id} className="exchange-item-picker__row">
+            {p.main_image_url ? (
+              <button
+                type="button"
+                className="exchange-item-picker__thumb-btn"
+                onClick={() => onViewImage(productGallery(p))}
+                aria-label="Ver imagen en grande"
+              >
+                <img src={p.main_image_url} alt="" className="exchange-item-picker__thumb" />
+              </button>
+            ) : (
+              <div className="exchange-item-picker__thumb exchange-item-picker__thumb--empty" />
+            )}
+            <span className="exchange-item-picker__info">
+              <strong>{p.name}</strong>
+              <div className="exchange-item-picker__variants">
+                {p.variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    disabled={v.stock <= 0}
+                    title={v.stock <= 0 ? 'Sin stock' : undefined}
+                    onClick={() => onPick(p, v)}
+                  >
+                    {v.size} / {v.color_name} ({v.stock})
+                  </button>
+                ))}
+              </div>
+            </span>
           </div>
         ))}
         {products && filtered.length === 0 && <p className="state-msg">Ningún producto coincide.</p>}
@@ -113,7 +136,25 @@ export default function ReturnModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [packageCollection, setPackageCollection] = useState<Collection | null>(null)
+  const [products, setProducts] = useState<Product[] | null>(null)
+  const [viewerImages, setViewerImages] = useState<LightboxImage[] | null>(null)
   const { toast } = useToast()
+
+  // Shared by both pickers below (the original item and its replacement) —
+  // fetched once here instead of each one fetching its own copy.
+  useEffect(() => {
+    api.getProducts().then(setProducts).catch(() => setProducts([]))
+  }, [])
+
+  // Clicking an item's photo opens that PRODUCT's whole gallery, looked up
+  // among the already-fetched products by product_id — falling back to
+  // just this line's own snapshot photo if the product can't be found
+  // (deleted, or products hasn't loaded yet).
+  function galleryForItem(productId: number | null, fallbackUrl: string | null, fallbackLabel: string): LightboxImage[] {
+    const product = productId != null ? (products ?? []).find((p) => p.id === productId) : undefined
+    if (product) return productGallery(product)
+    return fallbackUrl ? [{ url: fallbackUrl, label: fallbackLabel }] : []
+  }
 
   useEffect(() => {
     api
@@ -209,14 +250,31 @@ export default function ReturnModal({
                 const selected = i.id === orderItemId
                 const left = remainingByItem.get(i.id)
                 return (
-                  <button
+                  <div
                     key={i.id}
-                    type="button"
-                    className={`exchange-item-picker__row ${selected ? 'exchange-item-picker__row--selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    className={`exchange-item-picker__row exchange-item-picker__row--clickable ${selected ? 'exchange-item-picker__row--selected' : ''}`}
                     onClick={() => setOrderItemId(i.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setOrderItemId(i.id)
+                      }
+                    }}
                   >
                     {i.main_image_url ? (
-                      <img src={i.main_image_url} alt="" className="exchange-item-picker__thumb" />
+                      <button
+                        type="button"
+                        className="exchange-item-picker__thumb-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setViewerImages(galleryForItem(i.product_id, i.main_image_url, i.product_name))
+                        }}
+                        aria-label="Ver imagen en grande"
+                      >
+                        <img src={i.main_image_url} alt="" className="exchange-item-picker__thumb" />
+                      </button>
                     ) : (
                       <div className="exchange-item-picker__thumb exchange-item-picker__thumb--empty" />
                     )}
@@ -228,7 +286,7 @@ export default function ReturnModal({
                         {i.collection_name ? ` · Paquete: ${i.collection_name}` : ''}
                       </span>
                     </span>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -267,15 +325,24 @@ export default function ReturnModal({
               Producto de reemplazo
               {replacement ? (
                 <>
-                  <div className="gift-picker__product" style={{ marginTop: 6 }}>
+                  <div className="exchange-item-picker__row" style={{ marginTop: 6 }}>
                     {replacement.product.main_image_url ? (
-                      <img src={replacement.product.main_image_url} alt="" />
+                      <button
+                        type="button"
+                        className="exchange-item-picker__thumb-btn"
+                        onClick={() => setViewerImages(productGallery(replacement.product))}
+                        aria-label="Ver imagen en grande"
+                      >
+                        <img src={replacement.product.main_image_url} alt="" className="exchange-item-picker__thumb" />
+                      </button>
                     ) : (
-                      <div className="gift-picker__thumb" />
+                      <div className="exchange-item-picker__thumb exchange-item-picker__thumb--empty" />
                     )}
-                    <span className="gift-picker__name">
-                      {replacement.product.name} — {replacement.variant.size}, {replacement.variant.color_name} ·{' '}
-                      {formatPrice(replacement.product.price)}
+                    <span className="exchange-item-picker__info">
+                      <strong>{replacement.product.name}</strong>
+                      <span>
+                        {replacement.variant.size}, {replacement.variant.color_name} · {formatPrice(replacement.product.price)}
+                      </span>
                     </span>
                     <button type="button" className="btn btn--ghost btn--sm" onClick={() => setReplacement(null)}>
                       Quitar
@@ -299,11 +366,13 @@ export default function ReturnModal({
                 </>
               ) : showPicker ? (
                 <ReplacementPicker
+                  products={products}
                   onPick={(product, variant) => {
                     setReplacement({ product, variant })
                     setShowPicker(false)
                   }}
                   onCancel={() => setShowPicker(false)}
+                  onViewImage={setViewerImages}
                 />
               ) : (
                 <button type="button" className="btn btn--ghost btn--sm" style={{ marginTop: 6 }} onClick={() => setShowPicker(true)}>
@@ -329,6 +398,9 @@ export default function ReturnModal({
             </button>
           </div>
         </>
+      )}
+      {viewerImages && viewerImages.length > 0 && (
+        <ImageLightbox images={viewerImages} initialIndex={0} onClose={() => setViewerImages(null)} />
       )}
     </Modal>
   )
