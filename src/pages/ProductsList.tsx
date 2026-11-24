@@ -242,6 +242,19 @@ export default function ProductsList() {
     const MAX_MS = 2000
     const STABLE_CHECKS_NEEDED = 3
 
+    // A webfont that's still loading renders the table in a fallback font
+    // with different metrics first, then reflows (sometimes changing row
+    // heights, e.g. a long product name wrapping differently) once the real
+    // font swaps in — on a cold cache that can land well after the height
+    // already looked "stable" a few 80ms checks in a row, so the scroll
+    // position drifts with nothing left to correct it. Only matters as an
+    // extra condition to KEEP retrying, never to stop sooner than the
+    // height check alone would.
+    let fontsReady = !document.fonts
+    document.fonts?.ready.then(() => {
+      fontsReady = true
+    })
+
     function tick() {
       if (cancelled) return
       window.scrollTo(0, y)
@@ -249,7 +262,7 @@ export default function ProductsList() {
       stableChecks = height === lastHeight ? stableChecks + 1 : 0
       lastHeight = height
       elapsedMs += CHECK_MS
-      if (stableChecks >= STABLE_CHECKS_NEEDED || elapsedMs >= MAX_MS) return
+      if ((stableChecks >= STABLE_CHECKS_NEEDED && fontsReady) || elapsedMs >= MAX_MS) return
       timeoutId = window.setTimeout(tick, CHECK_MS)
     }
     tick()
