@@ -2425,6 +2425,17 @@ img {
   font-size: 17px;
 }
 
+.variants-editor__divider {
+  margin: 20px 0 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gray-200);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-500);
+}
+
 .variants-editor__header {
   display: flex;
   align-items: center;
@@ -2671,12 +2682,18 @@ img {
 }
 
 .color-picker__dropdown-btn {
-  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   height: 24px;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 0 8px;
+  border-radius: 999px;
   border: 1px solid var(--gray-200);
+  background: var(--white);
   color: var(--gray-600);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .color-picker__dropdown-btn:hover {
@@ -2792,8 +2809,9 @@ img {
 
 .variant-form__color-history {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   margin-top: 16px;
 }
 
@@ -2809,6 +2827,7 @@ img {
   gap: 8px;
   overflow-x: auto;
   padding: 2px;
+  width: 100%;
 }
 
 .variant-form__color-chip {

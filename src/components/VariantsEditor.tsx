@@ -456,6 +456,10 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
           />
       </div>
 
+      <div className="variants-editor__divider">
+        <span>Tallas creadas</span>
+      </div>
+
       <div className="editable-card__content">
         <div className="table-wrap">
           <table className="admin-table">
@@ -514,7 +518,6 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
                 <td data-label="Color">
                   <div className="variant-color-field">
                     <ColorPicker
-                      compact
                       value={v.color_hex}
                       photoUrl={mainImageUrl}
                       extraSwatches={storeColors}
