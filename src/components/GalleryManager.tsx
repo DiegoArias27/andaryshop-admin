@@ -5,6 +5,7 @@ import type { ProductImage } from '../api/types'
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, CropIcon, DragHandleIcon, StarIcon } from './icons'
 import ImageCropModal from './ImageCropModal'
 import ImageUploader from './ImageUploader'
+import PinchZoomImage from './PinchZoomImage'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
 import { useUploadQueue } from '../hooks/useUploadQueue'
@@ -398,7 +399,18 @@ export default function GalleryManager({ productId, productName, images, colors,
                 <ChevronLeftIcon />
               </button>
             )}
-            <img src={visibleOrder[viewerIndex].image_url} alt="" onClick={(e) => e.stopPropagation()} />
+            {/* onClick stopPropagation (same as the plain <img> this
+                replaced) — otherwise a single tap bubbles up to the
+                overlay's own onClick={closeViewer} and dismisses the
+                viewer. key={...} gives each photo a fresh zoom/pan state
+                instead of carrying over whatever the previous one was
+                left at. */}
+            <PinchZoomImage
+              key={visibleOrder[viewerIndex].image_url}
+              src={visibleOrder[viewerIndex].image_url}
+              alt=""
+              onClick={(e) => e.stopPropagation()}
+            />
             {visibleOrder.length > 1 && (
               <button
                 type="button"

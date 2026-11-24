@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons'
+import PinchZoomImage from './PinchZoomImage'
 
 export interface LightboxImage {
   url: string
@@ -63,7 +64,10 @@ export default function ImageLightbox({
               <ChevronLeftIcon />
             </button>
           )}
-          <img src={current.url} alt="" />
+          {/* key={current.url} — a fresh instance per photo, so zoom/pan
+              state doesn't carry over from whatever the previous one was
+              left at when moving to the next/prev image. */}
+          <PinchZoomImage key={current.url} src={current.url} alt="" />
           {hasMultiple && (
             <button type="button" className="image-viewer-overlay__nav image-viewer-overlay__nav--next" onClick={showNext} aria-label="Foto siguiente">
               <ChevronRightIcon />

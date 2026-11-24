@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Brand, Category, Collection, DiscountType, Product, ProductCollectionMembership } from '../api/types'
+import type { Brand, Category, DiscountType, NeckType, Product, ProductCollectionMembership } from '../api/types'
 import { formatPrice } from '../utils/currency'
 import { getProductPriceInfo } from '../utils/discount'
 import {
   CheckSquareIcon,
+  CloseIcon,
   FlameIcon,
   NoStockIcon,
   PercentIcon,
@@ -23,6 +24,8 @@ import ImageLightbox from '../components/ImageLightbox'
 function totalStockOf(p: Product): number {
   return p.variants.reduce((sum, v) => sum + v.stock, 0)
 }
+
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const
 
 /** Shown both above and below the table — with a long list, paging from
  * the top shouldn't require scrolling all the way down first. */
@@ -69,7 +72,8 @@ interface PersistedListState {
   search: string
   categoryId: string
   brandId: string
-  collectionId: string
+  sizeFilter: string
+  neckTypeFilter: NeckType | ''
   onlyNew: boolean
   onlyBestseller: boolean
   onlyDiscounted: boolean
@@ -95,7 +99,6 @@ export default function ProductsList() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
-  const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // Filters/page/search all restore from sessionStorage regardless of how
@@ -107,7 +110,8 @@ export default function ProductsList() {
   const [search, setSearch] = useState(initialState.search ?? '')
   const [categoryId, setCategoryId] = useState(initialState.categoryId ?? '')
   const [brandId, setBrandId] = useState(initialState.brandId ?? '')
-  const [collectionId, setCollectionId] = useState(initialState.collectionId ?? '')
+  const [sizeFilter, setSizeFilter] = useState(initialState.sizeFilter ?? '')
+  const [neckTypeFilter, setNeckTypeFilter] = useState<NeckType | ''>(initialState.neckTypeFilter ?? '')
   const [onlyNew, setOnlyNew] = useState(initialState.onlyNew ?? false)
   const [onlyBestseller, setOnlyBestseller] = useState(initialState.onlyBestseller ?? false)
   const [onlyDiscounted, setOnlyDiscounted] = useState(initialState.onlyDiscounted ?? false)
@@ -125,13 +129,12 @@ export default function ProductsList() {
 
   useEffect(() => {
     let ignore = false
-    Promise.all([api.getProducts(), api.getCategories(), api.getBrands(), api.getCollections()])
-      .then(([productsData, categoriesData, brandsData, collectionsData]) => {
+    Promise.all([api.getProducts(), api.getCategories(), api.getBrands()])
+      .then(([productsData, categoriesData, brandsData]) => {
         if (ignore) return
         setProducts(productsData)
         setCategories(categoriesData)
         setBrands(brandsData)
-        setCollections(collectionsData)
         setLoading(false)
       })
       .catch((err) => {
@@ -151,7 +154,8 @@ export default function ProductsList() {
         search,
         categoryId,
         brandId,
-        collectionId,
+        sizeFilter,
+        neckTypeFilter,
         onlyNew,
         onlyBestseller,
         onlyDiscounted,
@@ -163,7 +167,19 @@ export default function ProductsList() {
       // Private browsing / storage disabled — filters still work, just
       // won't be remembered for next time.
     }
-  }, [page, search, categoryId, brandId, collectionId, onlyNew, onlyBestseller, onlyDiscounted, onlyLowStock, onlyOutOfStock])
+  }, [
+    page,
+    search,
+    categoryId,
+    brandId,
+    sizeFilter,
+    neckTypeFilter,
+    onlyNew,
+    onlyBestseller,
+    onlyDiscounted,
+    onlyLowStock,
+    onlyOutOfStock,
+  ])
 
   // Gated on !loading — the skeleton shown while loading is a different
   // (usually shorter) height than the real table, so the browser can
@@ -303,7 +319,8 @@ export default function ProductsList() {
     return products.filter((p) => {
       if (categoryId && String(p.category_id) !== categoryId) return false
       if (brandId && String(p.brand_id) !== brandId) return false
-      if (collectionId && !p.collections.some((c) => String(c.id) === collectionId)) return false
+      if (sizeFilter && !p.variants.some((v) => v.size === sizeFilter)) return false
+      if (neckTypeFilter && p.neck_type !== neckTypeFilter) return false
       if (onlyNew && !p.is_new) return false
       if (onlyBestseller && !p.is_bestseller) return false
       if (onlyDiscounted && getProductPriceInfo(p).type !== 'discount') return false
@@ -321,7 +338,8 @@ export default function ProductsList() {
     search,
     categoryId,
     brandId,
-    collectionId,
+    sizeFilter,
+    neckTypeFilter,
     onlyNew,
     onlyBestseller,
     onlyDiscounted,
@@ -329,12 +347,6 @@ export default function ProductsList() {
     onlyOutOfStock,
     lowStockThreshold,
   ])
-
-  // "Colecciones" here means real, hand-picked product lists — not a
-  // wholesale/bundle/combo rule that just happens to reference some products
-  // (those aren't a browsable "this collection's products" list the way a
-  // curated one is).
-  const curatedCollections = useMemo(() => collections.filter((c) => c.pricing_mode === 'none'), [collections])
 
   const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize))
   const currentPage = Math.min(page, pageCount)
@@ -355,13 +367,46 @@ export default function ProductsList() {
     setPage(1)
   }
 
-  function handleCollectionChange(value: string) {
-    setCollectionId(value)
+  function handleSizeChange(value: string) {
+    setSizeFilter(value)
+    setPage(1)
+  }
+
+  // Click-to-toggle, same as the per-product switch in ProductEditor —
+  // clicking the already-active one clears it back to "todas."
+  function handleNeckTypeChange(value: NeckType) {
+    setNeckTypeFilter((prev) => (prev === value ? '' : value))
     setPage(1)
   }
 
   function toggleBooleanFilter(setter: (updater: (prev: boolean) => boolean) => void) {
     setter((prev) => !prev)
+    setPage(1)
+  }
+
+  const hasActiveFilters =
+    !!search ||
+    !!categoryId ||
+    !!brandId ||
+    !!sizeFilter ||
+    !!neckTypeFilter ||
+    onlyNew ||
+    onlyBestseller ||
+    onlyDiscounted ||
+    onlyLowStock ||
+    onlyOutOfStock
+
+  function handleClearFilters() {
+    setSearch('')
+    setCategoryId('')
+    setBrandId('')
+    setSizeFilter('')
+    setNeckTypeFilter('')
+    setOnlyNew(false)
+    setOnlyBestseller(false)
+    setOnlyDiscounted(false)
+    setOnlyLowStock(false)
+    setOnlyOutOfStock(false)
     setPage(1)
   }
 
@@ -385,6 +430,11 @@ export default function ProductsList() {
             }}
             placeholder="Buscar por nombre, marca o código de barras…"
           />
+          {search && (
+            <button type="button" className="icon-btn search-field__clear" onClick={() => handleSearchChange('')} aria-label="Borrar búsqueda">
+              <CloseIcon width={14} height={14} />
+            </button>
+          )}
         </div>
         <select className="category-select" value={categoryId} onChange={(e) => handleCategoryChange(e.target.value)}>
           <option value="">Todas las categorías</option>
@@ -402,11 +452,11 @@ export default function ProductsList() {
             </option>
           ))}
         </select>
-        <select className="category-select" value={collectionId} onChange={(e) => handleCollectionChange(e.target.value)}>
-          <option value="">Todas las colecciones</option>
-          {curatedCollections.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
+        <select className="category-select" value={sizeFilter} onChange={(e) => handleSizeChange(e.target.value)}>
+          <option value="">Todas las tallas</option>
+          {SIZES.map((s) => (
+            <option key={s} value={s}>
+              {s}
             </option>
           ))}
         </select>
@@ -458,6 +508,27 @@ export default function ProductsList() {
           <NoStockIcon width={14} height={14} fill="currentColor" style={{ color: 'var(--red)' }} />
           <span>Agotados</span>
         </button>
+        <button
+          type="button"
+          className={`filter-check-pill ${neckTypeFilter === 'redondo' ? 'filter-check-pill--active' : ''}`}
+          onClick={() => handleNeckTypeChange('redondo')}
+        >
+          {neckTypeFilter === 'redondo' ? <CheckSquareIcon width={16} height={16} /> : <SquareIcon width={16} height={16} />}
+          <span>Cuello redondo</span>
+        </button>
+        <button
+          type="button"
+          className={`filter-check-pill ${neckTypeFilter === 'polo' ? 'filter-check-pill--active' : ''}`}
+          onClick={() => handleNeckTypeChange('polo')}
+        >
+          {neckTypeFilter === 'polo' ? <CheckSquareIcon width={16} height={16} /> : <SquareIcon width={16} height={16} />}
+          <span>Tipo polo</span>
+        </button>
+        {hasActiveFilters && (
+          <button type="button" className="tag tag--clear-filters" onClick={handleClearFilters}>
+            Borrar filtros
+          </button>
+        )}
       </div>
 
       {selectedIds.length > 0 && (

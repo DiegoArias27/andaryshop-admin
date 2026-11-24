@@ -1,0 +1,216 @@
+import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react'
+
+interface PinchZoomImageProps {
+  src: string
+  alt: string
+  /** Forwarded to the wrapping div — GalleryManager's own viewer uses this
+   * to stopPropagation a plain tap/click, same as the bare <img> it
+   * replaced (otherwise it bubbles to the overlay's onClick={closeViewer}
+   * and dismisses the viewer). */
+  onClick?: (e: ReactMouseEvent) => void
+}
+
+const MAX_SCALE = 3
+const MIN_SCALE = 1
+const DOUBLE_TAP_ZOOM = 2.5
+const DOUBLE_TAP_MS = 400
+// A real finger (unlike a mouse pointer) covers a few mm of screen just
+// from how it lands — a fast tap reports noticeably more drift between
+// its own touchstart/touchend than a slow, deliberate one. 10px rejected
+// a lot of genuine fast taps as "that was a drag, not a tap."
+const TAP_MOVE_TOLERANCE = 28
+// Separately, how far the SECOND tap's start is allowed to land from the
+// first one's — a bit more forgiving than the within-tap jitter above,
+// since two independent taps naturally land with more variance than one
+// continuous press does.
+const DOUBLE_TAP_POSITION_TOLERANCE = 45
+
+function distance(a: Touch, b: Touch) {
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+}
+
+/** Pinch-to-zoom + drag-to-pan on a single image, scoped to that image
+ * instead of the whole page — without this, pinching over the photo
+ * triggers the browser's own page zoom. Double-tapping (or double-
+ * clicking, on desktop) toggles between 1x and a fixed zoomed-in level.
+ * Same behavior as the storefront's own PinchZoomImage (frontend repo),
+ * ported here since admin is a separate project — used by ImageLightbox
+ * so every "ver en grande" viewer in the admin (Punto de venta, Ventas,
+ * Devoluciones, product photos) zooms the same way customers can on a
+ * product's detail page. */
+export default function PinchZoomImage({ src, alt, onClick }: PinchZoomImageProps) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const state = useRef({
+    scale: 1,
+    x: 0,
+    y: 0,
+    pinchStartDist: 0,
+    pinchStartScale: 1,
+    panStartX: 0,
+    panStartY: 0,
+    panOriginX: 0,
+    panOriginY: 0,
+    tapStartX: 0,
+    tapStartY: 0,
+    gestureHadMultiTouch: false,
+    lastTapTime: 0,
+    lastTapX: 0,
+    lastTapY: 0,
+  })
+
+  function apply(smooth = false) {
+    const img = imgRef.current
+    if (!img) return
+    img.style.transition = smooth ? 'transform 0.2s ease' : ''
+    img.style.transform = `translate(${state.current.x}px, ${state.current.y}px) scale(${state.current.scale})`
+  }
+
+  function reset() {
+    const s = state.current
+    s.scale = 1
+    s.x = 0
+    s.y = 0
+    apply(true)
+  }
+
+  function toggleZoom() {
+    const s = state.current
+    if (s.scale > 1.01) {
+      reset()
+    } else {
+      s.scale = DOUBLE_TAP_ZOOM
+      s.x = 0
+      s.y = 0
+      apply(true)
+    }
+  }
+
+  // Desktop: a plain React onDoubleClick, no passive-listener gotchas since
+  // it doesn't need to block any native scroll/zoom gesture.
+  function handleDoubleClick(e: ReactMouseEvent) {
+    e.preventDefault()
+    toggleZoom()
+  }
+
+  useEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap) return
+    const s = state.current
+
+    function clampPan() {
+      if (!wrap) return
+      const { width, height } = wrap.getBoundingClientRect()
+      const maxX = (width * (s.scale - 1)) / 2
+      const maxY = (height * (s.scale - 1)) / 2
+      s.x = Math.min(maxX, Math.max(-maxX, s.x))
+      s.y = Math.min(maxY, Math.max(-maxY, s.y))
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 1) {
+        s.gestureHadMultiTouch = false
+        s.tapStartX = e.touches[0].clientX
+        s.tapStartY = e.touches[0].clientY
+        if (s.scale > 1.01) {
+          s.panStartX = e.touches[0].clientX
+          s.panStartY = e.touches[0].clientY
+          s.panOriginX = s.x
+          s.panOriginY = s.y
+        }
+      } else if (e.touches.length === 2) {
+        s.gestureHadMultiTouch = true
+        s.pinchStartDist = distance(e.touches[0], e.touches[1])
+        s.pinchStartScale = s.scale
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        // Some hosts (GalleryManager's own viewer) also track touches on
+        // an ANCESTOR for swipe-to-navigate — stopPropagation keeps a
+        // pinch (or a pan while already zoomed, below) from also being
+        // read as a swipe gesture there.
+        e.stopPropagation()
+        const dist = distance(e.touches[0], e.touches[1])
+        const next = (dist / s.pinchStartDist) * s.pinchStartScale
+        s.scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next))
+        clampPan()
+        apply()
+      } else if (e.touches.length === 1 && s.scale > 1.01) {
+        e.preventDefault()
+        e.stopPropagation()
+        s.x = s.panOriginX + (e.touches[0].clientX - s.panStartX)
+        s.y = s.panOriginY + (e.touches[0].clientY - s.panStartY)
+        clampPan()
+        apply()
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (e.touches.length !== 0) return
+
+      // Double-tap to toggle zoom — only for a clean single-finger tap
+      // (never part of a pinch) that barely moved (a pan/drag doesn't
+      // count as a tap, even if it ends quickly).
+      const wasZoomed = s.scale > 1.01
+      const changed = e.changedTouches[0]
+      const moved = changed ? Math.hypot(changed.clientX - s.tapStartX, changed.clientY - s.tapStartY) : Infinity
+      const wasTap = !s.gestureHadMultiTouch && moved <= TAP_MOVE_TOLERANCE
+
+      if (wasTap || wasZoomed || s.gestureHadMultiTouch) {
+        // Stops the browser from ALSO synthesizing its own click/dblclick
+        // from this same touch (otherwise a fast double-tap could toggle
+        // the zoom here and then, a beat later, toggle it right back via
+        // the synthetic dblclick calling handleDoubleClick again), and
+        // stops a host that also tracks touches on an ancestor (e.g.
+        // GalleryManager's swipe-to-navigate) from reading a pinch or a
+        // pan-while-zoomed as a swipe. A plain single-finger swipe at 1x
+        // is the one case left to bubble up untouched, on purpose.
+        e.preventDefault()
+        e.stopPropagation()
+      }
+
+      const now = Date.now()
+      const sincePrevTap = Math.hypot(s.tapStartX - s.lastTapX, s.tapStartY - s.lastTapY)
+      if (wasTap && now - s.lastTapTime < DOUBLE_TAP_MS && sincePrevTap <= DOUBLE_TAP_POSITION_TOLERANCE) {
+        s.lastTapTime = 0
+        toggleZoom()
+        return
+      } else if (wasTap) {
+        s.lastTapTime = now
+        s.lastTapX = s.tapStartX
+        s.lastTapY = s.tapStartY
+      } else {
+        s.lastTapTime = 0
+      }
+
+      if (s.scale <= 1.01) {
+        s.scale = 1
+        s.x = 0
+        s.y = 0
+        apply()
+      }
+    }
+
+    wrap.addEventListener('touchstart', onTouchStart, { passive: true })
+    wrap.addEventListener('touchmove', onTouchMove, { passive: false })
+    // Not passive — onTouchEnd needs to call preventDefault() for a tap,
+    // to block the browser's own synthetic click/dblclick for it.
+    wrap.addEventListener('touchend', onTouchEnd, { passive: false })
+    wrap.addEventListener('touchcancel', onTouchEnd, { passive: false })
+    return () => {
+      wrap.removeEventListener('touchstart', onTouchStart)
+      wrap.removeEventListener('touchmove', onTouchMove)
+      wrap.removeEventListener('touchend', onTouchEnd)
+      wrap.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [src])
+
+  return (
+    <div ref={wrapRef} className="pinch-zoom" onDoubleClick={handleDoubleClick} onClick={onClick}>
+      <img ref={imgRef} src={src} alt={alt} className="pinch-zoom__img" draggable={false} />
+    </div>
+  )
+}
