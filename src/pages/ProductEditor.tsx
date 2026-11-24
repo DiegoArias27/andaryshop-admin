@@ -71,7 +71,9 @@ type FormState = typeof emptyForm
 /** What "Agregar otro producto igual" (see the button near the bottom of an
  * existing product) carries over to a fresh /productos/nuevo — everything
  * except name (regenerated from category+brand, see buildAutoName) and
- * anything tied to this specific item (tallas, fotos, isActive). */
+ * anything tied to this specific item (tallas, fotos, isActive). Tags ride
+ * along too, but separately (see handleDuplicate/createDraft's own tagIds
+ * param) since they're not part of FormState at all. */
 type DuplicatePrefill = Partial<
   Pick<FormState, 'categoryId' | 'brandId' | 'price' | 'description' | 'discountType' | 'discountValue' | 'isNew' | 'isFeatured'>
 >
@@ -153,6 +155,17 @@ export default function ProductEditor() {
   const [sectionErrors, setSectionErrors] = useState<Partial<Record<SectionKey, string>>>({})
   const [variantsEditing, setVariantsEditing] = useState(false)
   const { toast } = useToast()
+
+  // A brand-less draft is a dead end for the catalog's own brand filter —
+  // block leaving a brand-new product (by either back control) until one
+  // is actually chosen, instead of letting it get abandoned without one.
+  function handleBack() {
+    if (isNewProduct && !form.brandId) {
+      toast('Elige una marca antes de salir', 'error')
+      return
+    }
+    navigate(-1)
+  }
 
   // A fresh draft (just created from a category switch or "Agregar otro
   // producto igual") keeps its auto-suggested name/price live until the
@@ -390,7 +403,7 @@ export default function ProductEditor() {
   // auto-filled from it, and Visibilidad, Descuento, Tallas e Inventario e
   // Imágenes all become usable immediately after, exactly like any other
   // existing product (see the unified layout below).
-  async function createDraft(overrides: DuplicatePrefill = {}) {
+  async function createDraft(overrides: DuplicatePrefill = {}, tagIds: number[] = []) {
     setSaving(true)
     setError(null)
     try {
@@ -410,6 +423,16 @@ export default function ProductEditor() {
         isActive: false,
       }
       const created = await api.createProduct({ ...toApiPayload(base), mainImageUrl: null })
+      if (tagIds.length > 0) {
+        // Best-effort — a failure here shouldn't block landing on the new
+        // product (tags aren't part of the same creation payload above),
+        // just leave it untagged for the admin to redo from Visibilidad.
+        try {
+          await api.setProductTags(created.id, tagIds)
+        } catch {
+          // ignore
+        }
+      }
       if (categoryId) {
         try {
           localStorage.setItem(LAST_CATEGORY_KEY, categoryId)
@@ -437,9 +460,10 @@ export default function ProductEditor() {
   // changing Categoría in Información Básica afterward — updates it).
   useEffect(() => {
     if (!isNewProduct || !refsLoaded) return
-    const prefill = (location.state as { prefill?: DuplicatePrefill } | null)?.prefill
+    const navState = location.state as { prefill?: DuplicatePrefill; tagIds?: number[] } | null
+    const prefill = navState?.prefill
     if (prefill) {
-      createDraft(prefill)
+      createDraft(prefill, navState?.tagIds ?? [])
       return
     }
     let lastCategoryId: string | null = null
@@ -467,6 +491,10 @@ export default function ProductEditor() {
           isNew: form.isNew,
           isFeatured: form.isFeatured,
         } satisfies DuplicatePrefill,
+        // Tags live outside FormState (see productTagIds above), so they
+        // ride along as their own bit of nav state instead of inside
+        // DuplicatePrefill.
+        tagIds: [...productTagIds],
       },
     })
   }
@@ -767,7 +795,7 @@ export default function ProductEditor() {
         className="icon-btn back-link"
         // -1 (real back navigation) instead of a plain push to
         // '/productos' — same idea as the "Volver" button below.
-        onClick={() => navigate(-1)}
+        onClick={handleBack}
         aria-label="Volver"
       >
         <BackIcon />
@@ -908,7 +936,7 @@ export default function ProductEditor() {
       )}
 
       <div className="form-actions">
-        <button type="button" className="btn btn--ghost" onClick={() => navigate(-1)}>
+        <button type="button" className="btn btn--ghost" onClick={handleBack}>
           {isNewProduct ? 'Cancelar' : 'Volver'}
         </button>
         {!isNewProduct && (

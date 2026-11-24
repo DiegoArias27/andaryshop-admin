@@ -202,20 +202,37 @@ export default function ReturnModal({
         <p className="state-msg">Ya no quedan unidades de esta venta sin devolver o cambiar.</p>
       ) : (
         <>
-          <label className="form-field">
+          <div className="form-field">
             Producto
-            <select value={orderItemId ?? ''} onChange={(e) => setOrderItemId(Number(e.target.value))}>
-              {availableItems.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.product_name}
-                  {i.size ? ` — ${i.size}` : ''}
-                  {i.color_name ? `, ${i.color_name}` : ''} ({remainingByItem.get(i.id)} disponible
-                  {remainingByItem.get(i.id) === 1 ? '' : 's'})
-                  {i.collection_name ? ` · Paquete: ${i.collection_name}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div className="exchange-item-picker">
+              {availableItems.map((i) => {
+                const selected = i.id === orderItemId
+                const left = remainingByItem.get(i.id)
+                return (
+                  <button
+                    key={i.id}
+                    type="button"
+                    className={`exchange-item-picker__row ${selected ? 'exchange-item-picker__row--selected' : ''}`}
+                    onClick={() => setOrderItemId(i.id)}
+                  >
+                    {i.main_image_url ? (
+                      <img src={i.main_image_url} alt="" className="exchange-item-picker__thumb" />
+                    ) : (
+                      <div className="exchange-item-picker__thumb exchange-item-picker__thumb--empty" />
+                    )}
+                    <span className="exchange-item-picker__info">
+                      <strong>{i.product_name}</strong>
+                      <span>
+                        {i.size}
+                        {i.color_name ? `, ${i.color_name}` : ''} — {left} disponible{left === 1 ? '' : 's'}
+                        {i.collection_name ? ` · Paquete: ${i.collection_name}` : ''}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           {type === 'exchange' && selectedItem?.collection_name && (
             <p className="form-field__note">
