@@ -215,9 +215,13 @@ export default function ProductsList() {
   // as "sometimes it works, sometimes it doesn't" depending on which one
   // was used. Waits for `loading` to clear so the table has its real
   // height before scrolling, not the much shorter skeleton's, then keeps
-  // reapplying for a few frames — thumbnails/collection tags can still be
-  // settling the table's final height right after it first mounts, and a
-  // single scrollTo can land short if it fires before that's done.
+  // reapplying until the page's height has actually stopped changing for
+  // a few checks in a row (not just a fixed handful of frames, and not
+  // just until scrollTo lands close once) — thumbnails/collection tags can
+  // still be settling the table's final height well after it first mounts,
+  // and after enough repeated back-and-forths that settling can land AFTER
+  // a short fixed-attempt retry already gave up, snapping back to the top
+  // instead of the saved position.
   useEffect(() => {
     if (loading) return
     let raw: string | null = null
@@ -230,20 +234,28 @@ export default function ProductsList() {
     if (!Number.isFinite(y)) return
 
     let cancelled = false
-    let frame = 0
-    let attempts = 0
-    function apply() {
+    let timeoutId = 0
+    let lastHeight = -1
+    let stableChecks = 0
+    let elapsedMs = 0
+    const CHECK_MS = 80
+    const MAX_MS = 2000
+    const STABLE_CHECKS_NEEDED = 3
+
+    function tick() {
       if (cancelled) return
       window.scrollTo(0, y)
-      attempts++
-      if (attempts < 10 && Math.abs(window.scrollY - y) > 1) {
-        frame = requestAnimationFrame(apply)
-      }
+      const height = document.body.scrollHeight
+      stableChecks = height === lastHeight ? stableChecks + 1 : 0
+      lastHeight = height
+      elapsedMs += CHECK_MS
+      if (stableChecks >= STABLE_CHECKS_NEEDED || elapsedMs >= MAX_MS) return
+      timeoutId = window.setTimeout(tick, CHECK_MS)
     }
-    frame = requestAnimationFrame(apply)
+    tick()
     return () => {
       cancelled = true
-      cancelAnimationFrame(frame)
+      window.clearTimeout(timeoutId)
     }
   }, [loading])
 
