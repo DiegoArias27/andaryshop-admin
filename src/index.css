@@ -2700,52 +2700,16 @@ img {
   display: block;
 }
 
-.variant-form__color-history {
+.variant-form__color-select {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 16px;
-}
-
-.variant-form__color-history-label {
   font-size: 15px;
   color: var(--gray-600);
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 
-.variant-form__color-history-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px;
-}
-
-.variant-form__color-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 4px 10px 4px 4px;
-  border: 1px solid var(--gray-200);
-  border-radius: 999px;
-  background: var(--white);
-  white-space: nowrap;
-}
-
-.variant-form__color-chip:hover {
-  border-color: var(--gray-400);
-}
-
-.variant-form__color-chip-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(13, 13, 13, 0.15);
-  flex-shrink: 0;
-}
-
-.variant-form__color-chip-label {
+.variant-form__color-select select {
   font-size: 15px;
 }
 
@@ -3057,6 +3021,9 @@ img {
 }
 
 .chip-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--gray-200);
   background: var(--white);
   border-radius: 999px;
@@ -3390,6 +3357,14 @@ img {
   object-fit: cover;
   border-radius: 10px;
   background: var(--gray-100);
+  flex-shrink: 0;
+}
+
+.stock-result__img-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
   flex-shrink: 0;
 }
 
@@ -5364,7 +5339,9 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  /* A bit tighter than before (was 40px) so the photo itself gets a little
+     more room to fill — this viewer felt small relative to its own overlay. */
+  padding: 20px;
   cursor: zoom-out;
   animation: confirm-overlay-in 0.15s ease-out;
 }
@@ -6775,17 +6752,28 @@ img {
   border-radius: 8px;
   background: var(--white);
   padding: 8px 10px;
-  cursor: pointer;
   text-align: left;
 }
 
-.exchange-item-picker__row:hover {
+.exchange-item-picker__row--clickable {
+  cursor: pointer;
+}
+
+.exchange-item-picker__row--clickable:hover {
   background: var(--gray-50);
 }
 
 .exchange-item-picker__row--selected {
   border-color: var(--black);
   background: var(--gray-50);
+}
+
+.exchange-item-picker__thumb-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .exchange-item-picker__thumb {
@@ -6807,6 +6795,7 @@ img {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .exchange-item-picker__info strong {
@@ -6816,6 +6805,13 @@ img {
 .exchange-item-picker__info > span {
   font-size: 13px;
   color: var(--gray-500);
+}
+
+.exchange-item-picker__variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 /* ---------- Generic edit modal (replaces "Activar edición") ---------- */

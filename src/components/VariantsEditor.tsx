@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, type DragEvent, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ProductVariant } from '../api/types'
@@ -71,18 +71,26 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   const [baseline, setBaseline] = useState<ProductVariant[]>(initialVariants)
   const [variants, setVariants] = useState<ProductVariant[]>(initialVariants)
   const [draft, setDraft] = useState(emptyDraft)
-  // Derived straight from the live variant list, not a separately saved
-  // palette — a color+name pair shows up here exactly as long as some
-  // variant still uses it, and disappears the moment the last one using it
-  // is deleted, with no separate cleanup step needed for either.
-  const productColors = useMemo(() => {
-    const seen = new Map<string, { hex: string; name: string }>()
-    for (const v of variants) {
-      const key = `${v.color_hex.toLowerCase()}|${v.color_name.toLowerCase()}`
-      if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
-    }
-    return [...seen.values()]
-  }, [variants])
+  // Every color currently in use by ANY product in the store, not just this
+  // one — fetched once and kept as plain data (no separate cache to clean
+  // up): a shade shows up here exactly as long as some variant somewhere
+  // still uses it, with no extra bookkeeping to remove it once nothing does.
+  const [storeColors, setStoreColors] = useState<{ hex: string; name: string }[]>([])
+  useEffect(() => {
+    api
+      .getProducts()
+      .then((all) => {
+        const seen = new Map<string, { hex: string; name: string }>()
+        for (const p of all) {
+          for (const v of p.variants) {
+            const key = `${v.color_hex.toLowerCase()}|${v.color_name.toLowerCase()}`
+            if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
+          }
+        }
+        setStoreColors([...seen.values()].sort((a, b) => a.name.localeCompare(b.name)))
+      })
+      .catch(() => {})
+  }, [])
   const [barcodeManuallyEdited, setBarcodeManuallyEdited] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -374,24 +382,26 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
       {open && (
       <>
-      {productColors.length > 0 && (
-        <div className="variant-form__color-history">
-          <span className="variant-form__color-history-label">Colores de este producto:</span>
-          <div className="variant-form__color-history-scroll">
-            {productColors.map((c) => (
-              <button
-                key={`${c.hex}-${c.name}`}
-                type="button"
-                className="variant-form__color-chip"
-                onClick={() => setDraft((d) => ({ ...d, colorHex: c.hex, colorName: c.name }))}
-                title={c.name}
-              >
-                <span className="variant-form__color-chip-swatch" style={{ background: c.hex }} />
-                <span className="variant-form__color-chip-label">{c.name}</span>
-              </button>
+      {storeColors.length > 0 && (
+        <label className="variant-form__color-select">
+          Usar un color ya existente en la tienda
+          <select
+            value=""
+            onChange={(e) => {
+              const [hex, name] = e.target.value.split('|')
+              if (hex && name) setDraft((d) => ({ ...d, colorHex: hex, colorName: name }))
+            }}
+          >
+            <option value="" disabled>
+              Elige un color…
+            </option>
+            {storeColors.map((c) => (
+              <option key={`${c.hex}-${c.name}`} value={`${c.hex}|${c.name}`}>
+                {c.name}
+              </option>
             ))}
-          </div>
-        </div>
+          </select>
+        </label>
       )}
 
       <div className="variant-form">
