@@ -857,24 +857,24 @@ export default function ProductEditor() {
                   </button>
                 ))}
               </div>
-            </div>
-          )}
 
-          {product && categories.find((c) => String(c.id) === form.categoryId)?.slug === 'playeras' && (
-            <div className="card">
-              <h2>Cuello</h2>
-              <div className="products-toolbar__checks">
-                {(['redondo', 'polo'] as const).map((nt) => (
-                  <button
-                    key={nt}
-                    type="button"
-                    className={`filter-check-pill ${form.neckType === nt ? 'filter-check-pill--active' : ''}`}
-                    onClick={() => handleNeckTypeChange(nt)}
-                  >
-                    {nt === 'redondo' ? 'Cuello redondo' : 'Tipo polo'}
-                  </button>
-                ))}
-              </div>
+              {categories.find((c) => String(c.id) === form.categoryId)?.slug === 'playeras' && (
+                <>
+                  <h2>Cuello</h2>
+                  <div className="products-toolbar__checks">
+                    {(['redondo', 'polo'] as const).map((nt) => (
+                      <button
+                        key={nt}
+                        type="button"
+                        className={`filter-check-pill ${form.neckType === nt ? 'filter-check-pill--active' : ''}`}
+                        onClick={() => handleNeckTypeChange(nt)}
+                      >
+                        {nt === 'redondo' ? 'Cuello redondo' : 'Tipo polo'}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
