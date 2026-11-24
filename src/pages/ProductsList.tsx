@@ -11,6 +11,7 @@ import {
   NoStockIcon,
   PercentIcon,
   SearchIcon,
+  ShirtIcon,
   SquareIcon,
   StarIcon,
   WarningIcon,
@@ -19,13 +20,17 @@ import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
 import { useAppSettings } from '../hooks/useAppSettings'
 import TableSkeleton from '../components/TableSkeleton'
-import ImageLightbox from '../components/ImageLightbox'
+import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
+import { productGallery } from '../utils/productGallery'
 
 function totalStockOf(p: Product): number {
   return p.variants.reduce((sum, v) => sum + v.stock, 0)
 }
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unitalla'] as const
+// Distinct from '' ("Todas las marcas" — no filter at all), so the brand
+// select can ALSO filter to specifically the products with no brand set.
+const NO_BRAND_VALUE = '__none__'
 
 /** Shown both above and below the table — with a long list, paging from
  * the top shouldn't require scrolling all the way down first. */
@@ -117,7 +122,7 @@ export default function ProductsList() {
   const [onlyDiscounted, setOnlyDiscounted] = useState(initialState.onlyDiscounted ?? false)
   const [onlyLowStock, setOnlyLowStock] = useState(initialState.onlyLowStock ?? false)
   const [onlyOutOfStock, setOnlyOutOfStock] = useState(initialState.onlyOutOfStock ?? false)
-  const [viewerImage, setViewerImage] = useState<string | null>(null)
+  const [viewerImages, setViewerImages] = useState<LightboxImage[] | null>(null)
   const [page, setPage] = useState(initialState.page ?? 1)
   const pageSize = 10
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -318,7 +323,11 @@ export default function ProductsList() {
     const term = search.trim().toLowerCase()
     return products.filter((p) => {
       if (categoryId && String(p.category_id) !== categoryId) return false
-      if (brandId && String(p.brand_id) !== brandId) return false
+      if (brandId === NO_BRAND_VALUE) {
+        if (p.brand_id != null) return false
+      } else if (brandId && String(p.brand_id) !== brandId) {
+        return false
+      }
       if (sizeFilter && !p.variants.some((v) => v.size === sizeFilter)) return false
       if (neckTypeFilter && p.neck_type !== neckTypeFilter) return false
       if (onlyNew && !p.is_new) return false
@@ -357,8 +366,16 @@ export default function ProductsList() {
     setPage(1)
   }
 
+  // The Cuello redondo/Tipo polo filter only makes sense while actually
+  // looking at Playeras (neck_type is null for every other category) —
+  // clearing it when leaving keeps it from silently staying active and
+  // filtering a different category with no visible pill to explain why.
+  const playerasCategoryId = categories.find((c) => c.slug === 'playeras')?.id
+  const isPlayerasSelected = playerasCategoryId != null && categoryId === String(playerasCategoryId)
+
   function handleCategoryChange(value: string) {
     setCategoryId(value)
+    if (playerasCategoryId == null || value !== String(playerasCategoryId)) setNeckTypeFilter('')
     setPage(1)
   }
 
@@ -446,6 +463,7 @@ export default function ProductsList() {
         </select>
         <select className="category-select" value={brandId} onChange={(e) => handleBrandChange(e.target.value)}>
           <option value="">Todas las marcas</option>
+          <option value={NO_BRAND_VALUE}>Sin marca</option>
           {brands.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -508,22 +526,28 @@ export default function ProductsList() {
           <NoStockIcon width={14} height={14} fill="currentColor" style={{ color: 'var(--red)' }} />
           <span>Agotados</span>
         </button>
-        <button
-          type="button"
-          className={`filter-check-pill ${neckTypeFilter === 'redondo' ? 'filter-check-pill--active' : ''}`}
-          onClick={() => handleNeckTypeChange('redondo')}
-        >
-          {neckTypeFilter === 'redondo' ? <CheckSquareIcon width={16} height={16} /> : <SquareIcon width={16} height={16} />}
-          <span>Cuello redondo</span>
-        </button>
-        <button
-          type="button"
-          className={`filter-check-pill ${neckTypeFilter === 'polo' ? 'filter-check-pill--active' : ''}`}
-          onClick={() => handleNeckTypeChange('polo')}
-        >
-          {neckTypeFilter === 'polo' ? <CheckSquareIcon width={16} height={16} /> : <SquareIcon width={16} height={16} />}
-          <span>Tipo polo</span>
-        </button>
+        {isPlayerasSelected && (
+          <>
+            <button
+              type="button"
+              className={`filter-check-pill ${neckTypeFilter === 'redondo' ? 'filter-check-pill--active' : ''}`}
+              onClick={() => handleNeckTypeChange('redondo')}
+            >
+              {neckTypeFilter === 'redondo' ? <CheckSquareIcon width={16} height={16} /> : <SquareIcon width={16} height={16} />}
+              <ShirtIcon width={14} height={14} style={{ color: 'var(--blue)' }} />
+              <span>Cuello redondo</span>
+            </button>
+            <button
+              type="button"
+              className={`filter-check-pill ${neckTypeFilter === 'polo' ? 'filter-check-pill--active' : ''}`}
+              onClick={() => handleNeckTypeChange('polo')}
+            >
+              {neckTypeFilter === 'polo' ? <CheckSquareIcon width={16} height={16} /> : <SquareIcon width={16} height={16} />}
+              <ShirtIcon width={14} height={14} style={{ color: 'var(--green)' }} />
+              <span>Tipo polo</span>
+            </button>
+          </>
+        )}
         {hasActiveFilters && (
           <button type="button" className="tag tag--clear-filters" onClick={handleClearFilters}>
             Borrar filtros
@@ -642,7 +666,7 @@ export default function ProductsList() {
                           className="admin-table__thumb-btn"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setViewerImage(p.main_image_url)
+                            setViewerImages(productGallery(p))
                           }}
                           aria-label="Ver imagen en grande"
                         >
@@ -724,8 +748,8 @@ export default function ProductsList() {
         </div>
       )}
 
-      {viewerImage && (
-        <ImageLightbox images={[{ url: viewerImage }]} initialIndex={0} onClose={() => setViewerImage(null)} />
+      {viewerImages && viewerImages.length > 0 && (
+        <ImageLightbox images={viewerImages} initialIndex={0} onClose={() => setViewerImages(null)} />
       )}
     </div>
   )

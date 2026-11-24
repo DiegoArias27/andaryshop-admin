@@ -31,6 +31,15 @@ export function PipetteIcon(props: IconProps) {
   )
 }
 
+export function ShirtIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M8 3.5 5 6l-2.5 3L4 10.5 5.5 9v10.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9l1.5 1.5 1.5-1.5L17 6l-3-2.5" />
+      <path d="M8 3.5a4 4 0 0 0 8 0" />
+    </svg>
+  )
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

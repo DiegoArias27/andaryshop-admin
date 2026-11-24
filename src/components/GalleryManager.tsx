@@ -9,6 +9,7 @@ import PinchZoomImage from './PinchZoomImage'
 import { useConfirm } from '../hooks/useConfirm'
 import { useToast } from '../hooks/useToast'
 import { useUploadQueue } from '../hooks/useUploadQueue'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 interface GalleryManagerProps {
   productId: number
@@ -30,6 +31,7 @@ export default function GalleryManager({ productId, productName, images, colors,
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [cropTarget, setCropTarget] = useState<ProductImage | null>(null)
   const [error, setError] = useState<string | null>(null)
+  useBodyScrollLock(viewerIndex !== null)
   const touchStartXRef = useRef<number | null>(null)
   const confirm = useConfirm()
   const { toast } = useToast()

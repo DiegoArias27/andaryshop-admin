@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
-import ImageLightbox from '../components/ImageLightbox'
+import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
+import { productGallery } from '../utils/productGallery'
 import NumberField from '../components/NumberField'
 import { api } from '../api/client'
 import type { Collection, Customer, PaymentMethod, Product, ProductVariant, VariantByBarcode, WholesaleTier } from '../api/types'
@@ -114,7 +115,7 @@ export default function StockLookup() {
   // reset the moment the cart changes again so it can never keep charging a
   // stale amount that no longer matches what's actually in the sale.
   const [totalOverride, setTotalOverride] = useState<number | null>(null)
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const [viewerImages, setViewerImages] = useState<LightboxImage[] | null>(null)
   const [completingSale, setCompletingSale] = useState(false)
   const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -817,12 +818,14 @@ export default function StockLookup() {
     )
   }
 
-  // Every sale line that actually has a photo, in cart order — what the
-  // lightbox browses through when one of them is clicked (see viewerIndex).
-  const cartImages = useMemo(
-    () => saleLines.filter((l): l is SaleLine & { image: string } => !!l.image).map((l) => ({ url: l.image, label: l.name })),
-    [saleLines]
-  )
+  // Clicking a cart line's photo opens that PRODUCT's whole gallery (looked
+  // up among the already-fetched allProducts by productId), falling back to
+  // just this line's own snapshot photo if the product can't be found.
+  function galleryForLine(line: SaleLine): LightboxImage[] {
+    const product = line.productId != null ? allProducts.find((p) => p.id === line.productId) : undefined
+    if (product) return productGallery(product)
+    return line.image ? [{ url: line.image, label: line.name }] : []
+  }
 
   // The selected "cliente frecuente"'s standing per-unit discount — stacks
   // on top of each line's own collection/override price and manual
@@ -1038,17 +1041,34 @@ export default function StockLookup() {
               const isProductHighlighted = selectableEntries[highlightedIndex]?.key === `p-${p.id}`
               return (
                 <div key={p.id} className="scanner-search__result" data-product-result={p.id}>
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     data-flat-key={`p-${p.id}`}
                     className={`scanner-search__result-main ${singleSelected ? 'scanner-search__result-main--selected' : ''} ${isProductHighlighted ? 'scanner-search__result-main--highlighted' : ''}`}
                     onClick={() => handlePickProduct(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handlePickProduct(p)
+                      }
+                    }}
                   >
                     {bulkMode && p.variants.length === 1 && (
                       <span className={`scanner-search__checkbox ${singleSelected ? 'scanner-search__checkbox--checked' : ''}`} />
                     )}
                     {p.main_image_url ? (
-                      <img src={p.main_image_url} alt="" />
+                      <button
+                        type="button"
+                        className="scanner-search__result-thumb-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setViewerImages(productGallery(p))
+                        }}
+                        aria-label="Ver imagen en grande"
+                      >
+                        <img src={p.main_image_url} alt="" />
+                      </button>
                     ) : (
                       <div className="scanner-search__result-thumb-empty" />
                     )}
@@ -1058,6 +1078,19 @@ export default function StockLookup() {
                         {p.category_name ?? 'Sin categoría'}
                         {p.brand_name ? ` · ${p.brand_name}` : ''}
                       </span>
+                      {p.variants.length === 1 && (
+                        <span className="scanner-search__result-variant-info">
+                          <span className="color-dot" style={{ backgroundColor: p.variants[0].color_hex }} />
+                          {p.variants[0].color_name} · {p.variants[0].size}
+                          {p.variants[0].barcode && ` · ${p.variants[0].barcode}`}
+                          {stockChipLabel(p.variants[0].stock, lowStockThreshold) && (
+                            <span className={`stock-flag ${stockClass(p.variants[0].stock, lowStockThreshold)}`}>
+                              {' '}
+                              ({stockChipLabel(p.variants[0].stock, lowStockThreshold)})
+                            </span>
+                          )}
+                        </span>
+                      )}
                       <span className="scanner-search__result-tags">
                         {!!p.is_new && <span className="tag">Nuevo</span>}
                         {!!p.is_bestseller && <span className="tag">Más vendido</span>}
@@ -1069,7 +1102,7 @@ export default function StockLookup() {
                         ))}
                       </span>
                     </div>
-                  </button>
+                  </div>
                   {p.variants.length > 1 && expandedProductId === p.id && (
                     <div className="scanner-search__variants">
                       {p.variants.map((v) => {
@@ -1086,6 +1119,7 @@ export default function StockLookup() {
                             {bulkMode && <span className={`scanner-search__checkbox ${selected ? 'scanner-search__checkbox--checked' : ''}`} />}
                             <span className="color-dot" style={{ backgroundColor: v.color_hex }} />
                             {v.color_name} · {v.size}
+                            {v.barcode && ` · ${v.barcode}`}
                             {stockChipLabel(v.stock, lowStockThreshold) && (
                               <span className={`stock-flag ${stockClass(v.stock, lowStockThreshold)}`}> ({stockChipLabel(v.stock, lowStockThreshold)})</span>
                             )}
@@ -1125,7 +1159,7 @@ export default function StockLookup() {
       <div className="pos-lookup-row__side">
       {result && (
         <>
-          <span className="page-block__hint">Último artículo detectado</span>
+          {mode === 'scan' && <span className="page-block__hint">Último artículo detectado</span>}
           <div className="stock-result" ref={resultRef}>
             {result.main_image_url ? (
               <img src={result.main_image_url} alt="" className="stock-result__img" />
@@ -1267,7 +1301,7 @@ export default function StockLookup() {
                     <button
                       type="button"
                       className="pos-cart__item-thumb-btn"
-                      onClick={() => setViewerIndex(saleLines.filter((l) => l.image).findIndex((l) => l.key === line.key))}
+                      onClick={() => setViewerImages(galleryForLine(line))}
                       aria-label="Ver imagen en grande"
                     >
                       <img src={line.image} alt="" />
@@ -1511,8 +1545,8 @@ export default function StockLookup() {
         )}
       </div>
 
-      {viewerIndex !== null && cartImages.length > 0 && (
-        <ImageLightbox images={cartImages} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
+      {viewerImages && viewerImages.length > 0 && (
+        <ImageLightbox images={viewerImages} initialIndex={0} onClose={() => setViewerImages(null)} />
       )}
     </div>
   )

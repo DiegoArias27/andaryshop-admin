@@ -24,7 +24,8 @@ import GiftPickerSkeleton from '../components/GiftPickerSkeleton'
 import ReturnModal from '../components/ReturnModal'
 import NumberField from '../components/NumberField'
 import Modal from '../components/Modal'
-import ImageLightbox from '../components/ImageLightbox'
+import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
+import { productGallery } from '../utils/productGallery'
 import {
   AwardIcon,
   CardIcon,
@@ -444,7 +445,7 @@ function OrderCard({
   const [cancelPassword, setCancelPassword] = useState('')
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const [viewerImages, setViewerImages] = useState<LightboxImage[] | null>(null)
   const [editingPhone, setEditingPhone] = useState(false)
   const [phoneDraft, setPhoneDraft] = useState(order.guest_phone ?? '')
   const [savingPhone, setSavingPhone] = useState(false)
@@ -645,20 +646,20 @@ function OrderCard({
   const itemGroups = groupItemsByPackage(order.items)
   const showGroupLabels = itemGroups.length > 1 || itemGroups[0]?.label !== 'Individual'
 
-  // Every item photo in this order, flattened in the same top-to-bottom
-  // order they're actually rendered in (grouped by package) — what the
-  // lightbox browses through when one of them is clicked (see viewerIndex).
-  const orderImages = itemGroups
-    .flatMap((g) => g.items)
-    .filter((i): i is typeof i & { main_image_url: string } => !!i.main_image_url)
-    .map((i) => ({ id: i.id, url: i.main_image_url, label: i.product_name }))
-
-  // Same idea as orderImages above, but for the editable draft table — keyed
-  // by array index instead of a real row id (a freshly-added draft line has
-  // none yet).
-  const draftImages = draftItems
-    .map((item, idx) => ({ idx, url: item.mainImageUrl, label: item.productName }))
-    .filter((x): x is { idx: number; url: string; label: string } => !!x.url)
+  // Clicking an item's photo should open that PRODUCT's whole gallery, not
+  // just browse between the other items in this order — look it up by
+  // product_id among the already-fetched products, falling back to just
+  // this line's own snapshot photo if the product can't be found (deleted,
+  // or products hasn't loaded yet).
+  function galleryForItem(
+    productId: number | null | undefined,
+    fallbackUrl: string | null | undefined,
+    fallbackLabel: string
+  ): LightboxImage[] {
+    const product = productId != null ? (products ?? []).find((p) => p.id === productId) : undefined
+    if (product) return productGallery(product)
+    return fallbackUrl ? [{ url: fallbackUrl, label: fallbackLabel }] : []
+  }
 
   const hasReturn = returns.some((r) => r.type === 'return')
   const hasExchange = returns.some((r) => r.type === 'exchange')
@@ -777,7 +778,7 @@ function OrderCard({
                       <button
                         type="button"
                         className="order-card__item-thumb-btn"
-                        onClick={() => setViewerIndex(orderImages.findIndex((img) => img.id === item.id))}
+                        onClick={() => setViewerImages(galleryForItem(item.product_id, item.main_image_url, item.product_name))}
                         aria-label="Ver imagen en grande"
                       >
                         <img src={item.main_image_url} alt="" />
@@ -938,7 +939,7 @@ function OrderCard({
                         <button
                           type="button"
                           className="order-card__item-thumb-btn"
-                          onClick={() => setViewerIndex(draftImages.findIndex((img) => img.idx === idx))}
+                          onClick={() => setViewerImages(galleryForItem(item.productId, item.mainImageUrl, item.productName))}
                           aria-label="Ver imagen en grande"
                         >
                           <img src={item.mainImageUrl} alt="" className="admin-table__thumb" />
@@ -1085,12 +1086,8 @@ function OrderCard({
         </Modal>
       )}
 
-      {viewerIndex !== null && (editing ? draftImages : orderImages).length > 0 && (
-        <ImageLightbox
-          images={editing ? draftImages : orderImages}
-          initialIndex={viewerIndex}
-          onClose={() => setViewerIndex(null)}
-        />
+      {viewerImages && viewerImages.length > 0 && (
+        <ImageLightbox images={viewerImages} initialIndex={0} onClose={() => setViewerImages(null)} />
       )}
     </div>
   )

@@ -18,7 +18,8 @@ import ImagePreview from '../components/ImagePreview'
 import ToggleSwitch from '../components/ToggleSwitch'
 import BannerEditor, { COLLECTION_DEVICE_RATIOS, seedBannerElements } from '../components/BannerEditor'
 import { CheckSquareIcon, DragHandleIcon, SquareIcon } from '../components/icons'
-import ImageLightbox from '../components/ImageLightbox'
+import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
+import { productGallery } from '../utils/productGallery'
 import { formatPrice } from '../utils/currency'
 import { getDiscountedPrice } from '../utils/discount'
 import { toDateStr } from '../utils/dates'
@@ -1259,7 +1260,7 @@ function AssignedProducts({
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [removingSelection, setRemovingSelection] = useState(false)
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const [viewerImages, setViewerImages] = useState<LightboxImage[] | null>(null)
   const { toast } = useToast()
   const confirmDialog = useConfirm()
 
@@ -1346,9 +1347,6 @@ function AssignedProducts({
   }
 
   const visibleOrder = orderIds.map((id) => productById.get(id)).filter((p): p is Product => !!p)
-  const viewerImages = visibleOrder
-    .filter((p): p is Product & { main_image_url: string } => !!p.main_image_url)
-    .map((p) => ({ url: p.main_image_url, label: p.name }))
 
   if (visibleOrder.length === 0) return <p className="state-msg">Sin productos asignados.</p>
 
@@ -1436,7 +1434,7 @@ function AssignedProducts({
                   <button
                     type="button"
                     className="admin-table__thumb-btn"
-                    onClick={() => setViewerIndex(viewerImages.findIndex((img) => img.url === p.main_image_url))}
+                    onClick={() => setViewerImages(productGallery(p))}
                     aria-label="Ver imagen en grande"
                   >
                     <img src={p.main_image_url} alt="" className="admin-table__thumb" />
@@ -1467,8 +1465,8 @@ function AssignedProducts({
         </table>
       </div>
 
-      {viewerIndex !== null && viewerImages.length > 0 && (
-        <ImageLightbox images={viewerImages} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
+      {viewerImages && viewerImages.length > 0 && (
+        <ImageLightbox images={viewerImages} initialIndex={0} onClose={() => setViewerImages(null)} />
       )}
     </div>
   )

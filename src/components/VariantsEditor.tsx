@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState, type DragEvent, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ProductVariant } from '../api/types'
@@ -71,6 +71,18 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   const [baseline, setBaseline] = useState<ProductVariant[]>(initialVariants)
   const [variants, setVariants] = useState<ProductVariant[]>(initialVariants)
   const [draft, setDraft] = useState(emptyDraft)
+  // Derived straight from the live variant list, not a separately saved
+  // palette — a color+name pair shows up here exactly as long as some
+  // variant still uses it, and disappears the moment the last one using it
+  // is deleted, with no separate cleanup step needed for either.
+  const productColors = useMemo(() => {
+    const seen = new Map<string, { hex: string; name: string }>()
+    for (const v of variants) {
+      const key = `${v.color_hex.toLowerCase()}|${v.color_name.toLowerCase()}`
+      if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
+    }
+    return [...seen.values()]
+  }, [variants])
   const [barcodeManuallyEdited, setBarcodeManuallyEdited] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -362,6 +374,26 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
 
       {open && (
       <>
+      {productColors.length > 0 && (
+        <div className="variant-form__color-history">
+          <span className="variant-form__color-history-label">Colores de este producto:</span>
+          <div className="variant-form__color-history-scroll">
+            {productColors.map((c) => (
+              <button
+                key={`${c.hex}-${c.name}`}
+                type="button"
+                className="variant-form__color-chip"
+                onClick={() => setDraft((d) => ({ ...d, colorHex: c.hex, colorName: c.name }))}
+                title={c.name}
+              >
+                <span className="variant-form__color-chip-swatch" style={{ background: c.hex }} />
+                <span className="variant-form__color-chip-label">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="variant-form">
           <select value={draft.size} onChange={(e) => setDraft((d) => ({ ...d, size: e.target.value }))}>
             <option value="" disabled>
@@ -373,15 +405,15 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
               </option>
             ))}
           </select>
-          <input
-            placeholder="Color (Negro…)"
-            value={draft.colorName}
-            onChange={(e) => setDraft((d) => ({ ...d, colorName: e.target.value }))}
-          />
           <ColorPicker
             value={draft.colorHex}
             photoUrl={mainImageUrl}
             onChange={(hex) => setDraft((d) => ({ ...d, colorHex: hex }))}
+          />
+          <input
+            placeholder="Color (Negro…)"
+            value={draft.colorName}
+            onChange={(e) => setDraft((d) => ({ ...d, colorName: e.target.value }))}
           />
           <input
             placeholder="Código de barras (automático)"

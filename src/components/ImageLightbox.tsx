@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons'
 import PinchZoomImage from './PinchZoomImage'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 export interface LightboxImage {
   url: string
@@ -28,6 +29,9 @@ export default function ImageLightbox({
 }) {
   const [index, setIndex] = useState(Math.min(Math.max(initialIndex, 0), images.length - 1))
   const hasMultiple = images.length > 1
+  // This component only ever exists while open (callers mount it
+  // conditionally), so the lock can just run for as long as it's mounted.
+  useBodyScrollLock(true)
 
   function showPrev() {
     setIndex((i) => (i - 1 + images.length) % images.length)

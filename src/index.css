@@ -2700,6 +2700,55 @@ img {
   display: block;
 }
 
+.variant-form__color-history {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.variant-form__color-history-label {
+  font-size: 15px;
+  color: var(--gray-600);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.variant-form__color-history-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.variant-form__color-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  background: var(--white);
+  white-space: nowrap;
+}
+
+.variant-form__color-chip:hover {
+  border-color: var(--gray-400);
+}
+
+.variant-form__color-chip-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(13, 13, 13, 0.15);
+  flex-shrink: 0;
+}
+
+.variant-form__color-chip-label {
+  font-size: 15px;
+}
+
 .variant-form {
   display: flex;
   flex-wrap: wrap;
@@ -3065,6 +3114,14 @@ img {
   flex-shrink: 0;
 }
 
+.scanner-search__result-thumb-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .scanner-search__result-body {
   display: flex;
   flex-direction: column;
@@ -3078,6 +3135,14 @@ img {
 
 .scanner-search__result-body > span {
   font-size: 16px;
+  color: var(--gray-500);
+}
+
+.scanner-search__result-variant-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
   color: var(--gray-500);
 }
 
@@ -6690,6 +6755,67 @@ img {
   flex-wrap: wrap;
   gap: 6px;
   margin-left: 46px;
+}
+
+.exchange-item-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.exchange-item-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.exchange-item-picker__row:hover {
+  background: var(--gray-50);
+}
+
+.exchange-item-picker__row--selected {
+  border-color: var(--black);
+  background: var(--gray-50);
+}
+
+.exchange-item-picker__thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--gray-100);
+  flex-shrink: 0;
+}
+
+.exchange-item-picker__thumb--empty {
+  width: 36px;
+  height: 36px;
+}
+
+.exchange-item-picker__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.exchange-item-picker__info strong {
+  font-size: 15px;
+}
+
+.exchange-item-picker__info > span {
+  font-size: 13px;
+  color: var(--gray-500);
 }
 
 /* ---------- Generic edit modal (replaces "Activar edición") ---------- */
