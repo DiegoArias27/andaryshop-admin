@@ -4,7 +4,7 @@ import ImageLightbox, { type LightboxImage } from '../components/ImageLightbox'
 import { productGallery } from '../utils/productGallery'
 import NumberField from '../components/NumberField'
 import { api } from '../api/client'
-import type { Collection, Customer, PaymentMethod, Product, ProductVariant, VariantByBarcode, WholesaleTier } from '../api/types'
+import type { Collection, Customer, NeckType, PaymentMethod, Product, ProductVariant, VariantByBarcode, WholesaleTier } from '../api/types'
 import type { SaleLine } from '../context/pos-session-context'
 import { usePosSession } from '../hooks/usePosSession'
 import {
@@ -21,6 +21,7 @@ import {
   PrinterIcon,
   SearchIcon,
   SettingsIcon,
+  ShirtIcon,
   TransferIcon,
   TrashIcon,
   UploadCloudIcon,
@@ -90,8 +91,9 @@ export default function StockLookup() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
-  const [collectionFilter, setCollectionFilter] = useState('')
   const [sizeFilter, setSizeFilter] = useState('')
+  const [neckTypeFilter, setNeckTypeFilter] = useState<NeckType | ''>('')
+  const [colorFilter, setColorFilter] = useState('')
   const [filterNew, setFilterNew] = useState(false)
   const [filterBestseller, setFilterBestseller] = useState(false)
   const [filterDiscount, setFilterDiscount] = useState(false)
@@ -121,6 +123,7 @@ export default function StockLookup() {
   const inputRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const resultRef = useRef<HTMLDivElement>(null)
+  const resultsListRef = useRef<HTMLDivElement>(null)
 
   function reloadProducts() {
     api
@@ -166,6 +169,13 @@ export default function StockLookup() {
   useEffect(() => {
     if (result) resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [result])
+
+  // Typing a text search can leave the actual results sitting below the
+  // fold (past the filters/menus above them) — bring them into view
+  // instead of making the admin scroll down by hand every time.
+  useEffect(() => {
+    if (searchQuery.trim()) resultsListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [searchQuery])
 
   // Shared by both discovery paths — a real barcode scan (doSearch, below)
   // and a search-mode pick resolved entirely from already-loaded data
@@ -425,15 +435,23 @@ export default function StockLookup() {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
   }, [allProducts])
 
-  const collectionOptions = useMemo(() => {
-    const map = new Map<number, string>()
+  // Playeras-only — the id is looked up by slug (not name) so it keeps
+  // matching even if the category's display name ever changes.
+  const playerasCategoryId = useMemo(
+    () => allProducts.find((p) => p.category_slug === 'playeras')?.category_id ?? null,
+    [allProducts]
+  )
+  const isPlayerasSelected = playerasCategoryId != null && categoryFilter === String(playerasCategoryId)
+
+  const colorOptions = useMemo(() => {
+    const seen = new Map<string, { hex: string; name: string }>()
     for (const p of allProducts) {
-      // Only real, hand-picked product lists — a wholesale/bundle/combo rule
-      // that just happens to reference products isn't a browsable "these
-      // are the products in this collection" filter.
-      for (const c of p.collections) if (c.pricing_mode === 'none') map.set(c.id, c.name)
+      for (const v of p.variants) {
+        const key = `${v.color_hex}|${v.color_name}`
+        if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
+      }
     }
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [allProducts])
 
   const sizeOptions = useMemo(() => {
@@ -449,7 +467,14 @@ export default function StockLookup() {
   // vendido/con descuento) can match many products at once, so they get a
   // bulk-select mode; a plain name search stays a simple single-pick lookup.
   const filtersActive =
-    !!categoryFilter || !!brandFilter || !!collectionFilter || !!sizeFilter || filterNew || filterBestseller || filterDiscount
+    !!categoryFilter ||
+    !!brandFilter ||
+    !!sizeFilter ||
+    !!neckTypeFilter ||
+    !!colorFilter ||
+    filterNew ||
+    filterBestseller ||
+    filterDiscount
   const hasActiveSearch = normalizedQuery.length > 0 || filtersActive
 
   const searchResults = hasActiveSearch
@@ -458,8 +483,12 @@ export default function StockLookup() {
           if (!p.is_active) return false
           if (categoryFilter && String(p.category_id) !== categoryFilter) return false
           if (brandFilter && String(p.brand_id) !== brandFilter) return false
-          if (collectionFilter && !p.collections.some((c) => String(c.id) === collectionFilter)) return false
           if (sizeFilter && !p.variants.some((v) => v.size === sizeFilter)) return false
+          if (neckTypeFilter && p.neck_type !== neckTypeFilter) return false
+          if (colorFilter) {
+            const [hex, name] = colorFilter.split('|')
+            if (!p.variants.some((v) => v.color_hex === hex && v.color_name === name)) return false
+          }
           if (filterNew && !p.is_new) return false
           if (filterBestseller && !p.is_bestseller) return false
           if (filterDiscount && getProductPriceInfo(p).type !== 'discount') return false
@@ -489,7 +518,7 @@ export default function StockLookup() {
   // A new query/filter invalidates whatever was highlighted before.
   useEffect(() => {
     setHighlightedIndex(-1)
-  }, [searchQuery, categoryFilter, brandFilter, collectionFilter, sizeFilter, filterNew, filterBestseller, filterDiscount])
+  }, [searchQuery, categoryFilter, brandFilter, sizeFilter, neckTypeFilter, colorFilter, filterNew, filterBestseller, filterDiscount])
 
   useEffect(() => {
     if (highlightedIndex < 0) return
@@ -977,7 +1006,13 @@ export default function StockLookup() {
             </select>
           </div>
           <div className="scanner-search__menus">
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value)
+                if (playerasCategoryId == null || e.target.value !== String(playerasCategoryId)) setNeckTypeFilter('')
+              }}
+            >
               <option value="">Categoría (todas)</option>
               {categoryOptions.map(([id, name]) => (
                 <option key={id} value={id}>
@@ -993,16 +1028,36 @@ export default function StockLookup() {
                 </option>
               ))}
             </select>
-            <select value={collectionFilter} onChange={(e) => setCollectionFilter(e.target.value)}>
-              <option value="">Colección (todas)</option>
-              {collectionOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
+            <select value={colorFilter} onChange={(e) => setColorFilter(e.target.value)}>
+              <option value="">Color (todos)</option>
+              {colorOptions.map((c) => (
+                <option key={`${c.hex}-${c.name}`} value={`${c.hex}|${c.name}`}>
+                  {c.name}
                 </option>
               ))}
             </select>
           </div>
           <div className="scanner-search__filters">
+            {isPlayerasSelected && (
+              <>
+                <button
+                  type="button"
+                  className={`chip-filter ${neckTypeFilter === 'redondo' ? 'chip-filter--active' : ''}`}
+                  onClick={() => setNeckTypeFilter((v) => (v === 'redondo' ? '' : 'redondo'))}
+                >
+                  <ShirtIcon width={14} height={14} style={{ color: 'var(--blue)' }} />
+                  Cuello redondo
+                </button>
+                <button
+                  type="button"
+                  className={`chip-filter ${neckTypeFilter === 'polo' ? 'chip-filter--active' : ''}`}
+                  onClick={() => setNeckTypeFilter((v) => (v === 'polo' ? '' : 'polo'))}
+                >
+                  <ShirtIcon width={14} height={14} style={{ color: 'var(--green)' }} />
+                  Tipo polo
+                </button>
+              </>
+            )}
             <button
               type="button"
               className={`chip-filter ${filterNew ? 'chip-filter--active' : ''}`}
@@ -1035,7 +1090,7 @@ export default function StockLookup() {
             )}
           </div>
 
-          <div className="scanner-search__results">
+          <div className="scanner-search__results" ref={resultsListRef}>
             {searchResults.map((p) => {
               const singleSelected = bulkMode && p.variants.length === 1 && selectedVariantIds.has(p.variants[0].id)
               const isProductHighlighted = selectableEntries[highlightedIndex]?.key === `p-${p.id}`
@@ -1157,12 +1212,24 @@ export default function StockLookup() {
       </div>
 
       <div className="pos-lookup-row__side">
-      {result && (
+      {/* In búsqueda (not reabasteciendo) the item already went straight to
+          la venta actual — the results list right there already shows what
+          was picked, so this card (built for a scan, where there's nothing
+          else on screen to confirm it) would just be a redundant extra
+          screen to get past. */}
+      {result && (mode === 'scan' || restockMode) && (
         <>
           {mode === 'scan' && <span className="page-block__hint">Último artículo detectado</span>}
           <div className="stock-result" ref={resultRef}>
             {result.main_image_url ? (
-              <img src={result.main_image_url} alt="" className="stock-result__img" />
+              <button
+                type="button"
+                className="stock-result__img-btn"
+                onClick={() => setViewerImages(resultProduct ? productGallery(resultProduct) : [{ url: result.main_image_url as string, label: result.product_name }])}
+                aria-label="Ver imagen en grande"
+              >
+                <img src={result.main_image_url} alt="" className="stock-result__img" />
+              </button>
             ) : (
               <div className="stock-result__img" />
             )}

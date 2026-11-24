@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons'
+import { CloseIcon } from './icons'
 import PinchZoomImage from './PinchZoomImage'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+
+// Same threshold GalleryManager's own standalone viewer uses for its swipe
+// navigation — a deliberate drag, not just a finger settling after a tap.
+const SWIPE_THRESHOLD = 40
 
 export interface LightboxImage {
   url: string
@@ -41,6 +45,22 @@ export default function ImageLightbox({
     setIndex((i) => (i + 1) % images.length)
   }
 
+  // Swiping replaces the old onscreen prev/next arrows — a plain
+  // single-finger drag at 1x zoom is deliberately left to bubble up
+  // untouched by PinchZoomImage's own touch handling (see its comments),
+  // so it reaches this far without needing anything special from it.
+  const touchStartXRef = useRef<number | null>(null)
+  function handleTouchStart(e: ReactTouchEvent) {
+    touchStartXRef.current = e.touches[0].clientX
+  }
+  function handleTouchEnd(e: ReactTouchEvent) {
+    if (touchStartXRef.current === null || !hasMultiple) return
+    const dx = e.changedTouches[0].clientX - touchStartXRef.current
+    touchStartXRef.current = null
+    if (dx > SWIPE_THRESHOLD) showPrev()
+    else if (dx < -SWIPE_THRESHOLD) showNext()
+  }
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -56,27 +76,17 @@ export default function ImageLightbox({
   if (!current) return null
 
   return createPortal(
-    <div className="image-viewer-overlay" onClick={onClose}>
+    <div className="image-viewer-overlay" onClick={onClose} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <button type="button" className="icon-btn image-viewer-overlay__close" onClick={onClose} aria-label="Cerrar">
         <CloseIcon />
       </button>
 
       <div className="image-lightbox__stage" onClick={(e) => e.stopPropagation()}>
         <div className="image-lightbox__main">
-          {hasMultiple && (
-            <button type="button" className="image-viewer-overlay__nav image-viewer-overlay__nav--prev" onClick={showPrev} aria-label="Foto anterior">
-              <ChevronLeftIcon />
-            </button>
-          )}
           {/* key={current.url} — a fresh instance per photo, so zoom/pan
               state doesn't carry over from whatever the previous one was
               left at when moving to the next/prev image. */}
           <PinchZoomImage key={current.url} src={current.url} alt="" />
-          {hasMultiple && (
-            <button type="button" className="image-viewer-overlay__nav image-viewer-overlay__nav--next" onClick={showNext} aria-label="Foto siguiente">
-              <ChevronRightIcon />
-            </button>
-          )}
         </div>
 
         {hasMultiple && (
