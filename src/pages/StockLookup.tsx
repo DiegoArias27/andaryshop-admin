@@ -461,7 +461,10 @@ export default function StockLookup() {
     () => allProducts.find((p) => p.category_slug === 'playeras')?.category_id ?? null,
     [allProducts]
   )
-  const isPlayerasSelected = playerasCategoryId != null && categoryFilter === String(playerasCategoryId)
+  // "Categoría (todas)" still shows the Cuello pills too (Playeras is
+  // included in that broader view) — only hidden once a different,
+  // specific category is chosen instead.
+  const showNeckTypeFilter = playerasCategoryId != null && (categoryFilter === '' || categoryFilter === String(playerasCategoryId))
 
   const colorOptions = useMemo(() => {
     const seen = new Map<string, { hex: string; name: string }>()
@@ -1035,7 +1038,7 @@ export default function StockLookup() {
               value={categoryFilter}
               onChange={(e) => {
                 setCategoryFilter(e.target.value)
-                if (playerasCategoryId == null || e.target.value !== String(playerasCategoryId)) setNeckTypeFilter('')
+                if (playerasCategoryId != null && e.target.value !== '' && e.target.value !== String(playerasCategoryId)) setNeckTypeFilter('')
               }}
             >
               <option value="">Categoría (todas)</option>
@@ -1063,7 +1066,7 @@ export default function StockLookup() {
             </select>
           </div>
           <div className="scanner-search__filters">
-            {isPlayerasSelected && (
+            {showNeckTypeFilter && (
               <>
                 <button
                   type="button"

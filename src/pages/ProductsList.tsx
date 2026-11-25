@@ -426,12 +426,15 @@ export default function ProductsList() {
   // looking at Playeras (neck_type is null for every other category) —
   // clearing it when leaving keeps it from silently staying active and
   // filtering a different category with no visible pill to explain why.
+  // "Todas las categorías" (categoryId === '') still shows it — Playeras is
+  // included in that broader view too — and it's only actually cleared/
+  // hidden once a DIFFERENT, specific category is chosen instead.
   const playerasCategoryId = categories.find((c) => c.slug === 'playeras')?.id
-  const isPlayerasSelected = playerasCategoryId != null && categoryId === String(playerasCategoryId)
+  const showNeckTypeFilter = playerasCategoryId != null && (categoryId === '' || categoryId === String(playerasCategoryId))
 
   function handleCategoryChange(value: string) {
     setCategoryId(value)
-    if (playerasCategoryId == null || value !== String(playerasCategoryId)) setNeckTypeFilter('')
+    if (playerasCategoryId != null && value !== '' && value !== String(playerasCategoryId)) setNeckTypeFilter('')
     setPage(1)
   }
 
@@ -582,7 +585,7 @@ export default function ProductsList() {
           <NoStockIcon width={14} height={14} fill="currentColor" style={{ color: 'var(--red)' }} />
           <span>Agotados</span>
         </button>
-        {isPlayerasSelected && (
+        {showNeckTypeFilter && (
           <>
             <button
               type="button"
