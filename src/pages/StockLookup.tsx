@@ -470,7 +470,11 @@ export default function StockLookup() {
     const seen = new Map<string, { hex: string; name: string }>()
     for (const p of allProducts) {
       for (const v of p.variants) {
-        const key = `${v.color_hex}|${v.color_name}`
+        // Keyed by name alone — two variants named the same (even at a
+        // slightly different hex) are one color as far as this filter is
+        // concerned, and the filter below matches by name for the same
+        // reason.
+        const key = v.color_name.toLowerCase()
         if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
       }
     }
@@ -508,10 +512,7 @@ export default function StockLookup() {
           if (brandFilter && String(p.brand_id) !== brandFilter) return false
           if (sizeFilter && !p.variants.some((v) => v.size === sizeFilter)) return false
           if (neckTypeFilter && p.neck_type !== neckTypeFilter) return false
-          if (colorFilter) {
-            const [hex, name] = colorFilter.split('|')
-            if (!p.variants.some((v) => v.color_hex === hex && v.color_name === name)) return false
-          }
+          if (colorFilter && !p.variants.some((v) => v.color_name === colorFilter)) return false
           if (filterNew && !p.is_new) return false
           if (filterBestseller && !p.is_bestseller) return false
           if (filterDiscount && getProductPriceInfo(p).type !== 'discount') return false
@@ -1059,7 +1060,7 @@ export default function StockLookup() {
             <select value={colorFilter} onChange={(e) => setColorFilter(e.target.value)}>
               <option value="">Color (todos)</option>
               {colorOptions.map((c) => (
-                <option key={`${c.hex}-${c.name}`} value={`${c.hex}|${c.name}`}>
+                <option key={c.name} value={c.name}>
                   {c.name}
                 </option>
               ))}

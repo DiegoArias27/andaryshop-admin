@@ -83,7 +83,12 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
         const seen = new Map<string, { hex: string; name: string }>()
         for (const p of all) {
           for (const v of p.variants) {
-            const key = `${v.color_hex.toLowerCase()}|${v.color_name.toLowerCase()}`
+            // Keyed by name alone (not hex+name) — two variants sharing a
+            // name like "Negro" at very slightly different hexes are the
+            // same color as far as anyone picking from this list cares;
+            // showing two entries that look identical is just confusing
+            // noise.
+            const key = v.color_name.toLowerCase()
             if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
           }
         }
@@ -98,7 +103,10 @@ const VariantsEditor = forwardRef<VariantsEditorHandle, VariantsEditorProps>(fun
   const productColors = useMemo(() => {
     const seen = new Map<string, { hex: string; name: string }>()
     for (const v of variants) {
-      const key = `${v.color_hex.toLowerCase()}|${v.color_name.toLowerCase()}`
+      // Keyed by name alone — two variants named the same (even at a
+      // slightly different hex) are one color as far as this quick-pick
+      // list is concerned.
+      const key = v.color_name.toLowerCase()
       if (!seen.has(key)) seen.set(key, { hex: v.color_hex, name: v.color_name })
     }
     return [...seen.values()]
