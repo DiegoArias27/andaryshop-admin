@@ -148,13 +148,26 @@ function StatSummaryCard({
 
 /** One product's color/talla breakdown, rendered inline — same markup
  * whether it's expanded under a "Más vendidos"/"Todos"/"Regalos" row. */
-function VariantBreakdown({ variants }: { variants: ProductStatVariant[] }) {
+function VariantBreakdown({
+  variants,
+  onViewImage,
+}: {
+  variants: ProductStatVariant[]
+  onViewImage: (v: ProductStatVariant) => void
+}) {
   return (
     <div className="stat-drilldown">
       {variants.map((v, idx) => (
         <div key={idx} className="stat-drilldown__row">
           {v.mainImageUrl ? (
-            <img src={v.mainImageUrl} alt="" className="stat-drilldown__thumb" />
+            <button
+              type="button"
+              className="stat-drilldown__thumb-btn"
+              onClick={() => onViewImage(v)}
+              aria-label="Ver imagen en grande"
+            >
+              <img src={v.mainImageUrl} alt="" className="stat-drilldown__thumb" />
+            </button>
           ) : (
             <div className="stat-drilldown__thumb stat-drilldown__thumb--empty" />
           )}
@@ -226,7 +239,17 @@ function OrderBreakdown({ orders }: { orders: OrderPackageMatch[] }) {
   )
 }
 
-function StatTable({ view, rows, onClose }: { view: StatView; rows: StatTableRow[]; onClose: () => void }) {
+function StatTable({
+  view,
+  rows,
+  onClose,
+  onViewImage,
+}: {
+  view: StatView
+  rows: StatTableRow[]
+  onClose: () => void
+  onViewImage: (v: ProductStatVariant) => void
+}) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const firstColumnLabel = view === 'packages' ? 'Paquete' : view === 'category' ? 'Categoría' : 'Producto'
   const hasDrilldown = rows.some((r) => r.variants || r.orders)
@@ -279,7 +302,11 @@ function StatTable({ view, rows, onClose }: { view: StatView; rows: StatTableRow
                 trs.push(
                   <tr key={`${row.key}-detail`} className="sales-stats__detail-row">
                     <td colSpan={hasDrilldown ? 4 : 3}>
-                      {row.variants ? <VariantBreakdown variants={row.variants} /> : <OrderBreakdown orders={row.orders!} />}
+                      {row.variants ? (
+                        <VariantBreakdown variants={row.variants} onViewImage={onViewImage} />
+                      ) : (
+                        <OrderBreakdown orders={row.orders!} />
+                      )}
                     </td>
                   </tr>
                 )
@@ -365,10 +392,12 @@ function GiftProductPicker({
   products,
   onPick,
   onCancel,
+  onViewImage,
 }: {
   products: Product[] | null
   onPick: (product: Product, variant: ProductVariant) => void
   onCancel: () => void
+  onViewImage: (images: LightboxImage[]) => void
 }) {
   const [search, setSearch] = useState('')
 
@@ -393,7 +422,18 @@ function GiftProductPicker({
       <div className="gift-picker__list">
         {filtered.slice(0, 30).map((p) => (
           <div key={p.id} className="gift-picker__product">
-            {p.main_image_url ? <img src={p.main_image_url} alt="" /> : <div className="gift-picker__thumb" />}
+            {p.main_image_url ? (
+              <button
+                type="button"
+                className="gift-picker__thumb-btn"
+                onClick={() => onViewImage(productGallery(p))}
+                aria-label="Ver imagen en grande"
+              >
+                <img src={p.main_image_url} alt="" />
+              </button>
+            ) : (
+              <div className="gift-picker__thumb" />
+            )}
             <span className="gift-picker__name">{p.name}</span>
             <div className="gift-picker__variants">
               {p.variants.map((v) => (
@@ -1000,12 +1040,14 @@ function OrderCard({
               products={products}
               onPick={(p, v) => addDraftProduct(p, v, false)}
               onCancel={() => setShowProductPicker(false)}
+              onViewImage={setViewerImages}
             />
           ) : showGiftPicker ? (
             <GiftProductPicker
               products={products}
               onPick={(p, v) => addDraftProduct(p, v, true)}
               onCancel={() => setShowGiftPicker(false)}
+              onViewImage={setViewerImages}
             />
           ) : (
             <div className="order-card__actions">
@@ -1135,6 +1177,17 @@ export default function Orders() {
   // Loaded once here (not per OrderCard) — every card's edit view needs it
   // for live stock checks while adding a product or bumping a quantity.
   const [products, setProducts] = useState<Product[] | null>(null)
+  const [statsViewerImages, setStatsViewerImages] = useState<LightboxImage[] | null>(null)
+
+  // Clicking a stat row's photo opens that PRODUCT's whole gallery, looked
+  // up among the already-fetched products by id — falling back to just
+  // that variant's own snapshot photo if the product can't be found
+  // (deleted, or products hasn't loaded yet).
+  function galleryForStatVariant(v: ProductStatVariant): LightboxImage[] {
+    const product = v.productId != null ? (products ?? []).find((p) => p.id === v.productId) : undefined
+    if (product) return productGallery(product)
+    return v.mainImageUrl ? [{ url: v.mainImageUrl, label: v.colorName ?? undefined }] : []
+  }
   const [returnsByOrder, setReturnsByOrder] = useState<Map<number, ReturnRecord[]>>(new Map())
   // Scoped to the same from/to as the orders list (unlike returnsByOrder
   // above, which is deliberately unscoped) — just for the "Cambios"/
@@ -1436,7 +1489,12 @@ export default function Orders() {
 
       {statView && statRows[statView].length > 0 && (
         <div ref={statTableRef}>
-          <StatTable view={statView} rows={statRows[statView]} onClose={() => setStatView(null)} />
+          <StatTable
+            view={statView}
+            rows={statRows[statView]}
+            onClose={() => setStatView(null)}
+            onViewImage={(v) => setStatsViewerImages(galleryForStatVariant(v))}
+          />
         </div>
       )}
 
@@ -1518,6 +1576,10 @@ export default function Orders() {
           />
         ))}
       </div>
+
+      {statsViewerImages && statsViewerImages.length > 0 && (
+        <ImageLightbox images={statsViewerImages} initialIndex={0} onClose={() => setStatsViewerImages(null)} />
+      )}
     </div>
   )
 }
